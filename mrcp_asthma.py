@@ -1,8 +1,13 @@
+"""
+MRCP REVISION NOTE: Asthma, Laryngeal Spasm & Airway Disease
+Page size: A3 Portrait (297mm x 420mm) for readable, spacious layout.
+PIL diagram rule: fB=28px, fS=22px, fXS=17px — renders ~22/17/13pt on A3.
+"""
 import os
 from io import BytesIO
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
                                  TableStyle, HRFlowable, Image as RLImage)
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A3
 from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor
 from reportlab.lib.styles import ParagraphStyle
@@ -17,6 +22,7 @@ pdfmetrics.registerFont(TTFont('DV-B', FONT_DIR + 'DejaVuSans-Bold.ttf'))
 pdfmetrics.registerFont(TTFont('DV-I', FONT_DIR + 'DejaVuSansMono-Oblique.ttf'))
 pdfmetrics.registerFont(TTFont('DV-BI',FONT_DIR + 'DejaVuSansMono-BoldOblique.ttf'))
 
+# Colours
 TEAL   = HexColor('#0d5c63'); TEAL_M  = HexColor('#1a8a94')
 TEAL_L = HexColor('#e0f4f5'); TEAL_XL = HexColor('#f0fafb')
 AMBER  = HexColor('#fff3cd'); AMBER_B = HexColor('#e6a817')
@@ -27,40 +33,45 @@ BLUE_L = HexColor('#e8f4fd'); BLUE_D  = HexColor('#2471a3')
 PUR_L  = HexColor('#f5eef8'); PUR_D   = HexColor('#7d3c98')
 NAVY   = HexColor('#1a1a2e'); WHITE   = HexColor('#ffffff')
 
-PAGE_W, PAGE_H = A4; MARGIN = 18*mm; CW = PAGE_W - 2*MARGIN
+# A3 portrait geometry  (297mm wide x 420mm tall)
+PAGE_W, PAGE_H = A3          # 841.89pt x 1190.55pt
+MARGIN = 22*mm               # 22mm each side
+CW = PAGE_W - 2*MARGIN       # ~700pt content width
 
-doc = SimpleDocTemplate(OUT, pagesize=A4,
+doc = SimpleDocTemplate(OUT, pagesize=A3,
       leftMargin=MARGIN, rightMargin=MARGIN,
       topMargin=MARGIN, bottomMargin=MARGIN)
 
-sTitle = ParagraphStyle('TT', fontName='DV-B', fontSize=20, leading=26,
-         textColor=HexColor('#0d5c63'), spaceAfter=4, alignment=1)
-sSub   = ParagraphStyle('TS', fontName='DV-I', fontSize=10, leading=14,
-         textColor=HexColor('#1a8a94'), spaceAfter=2, alignment=1)
-sH1    = ParagraphStyle('H1', fontName='DV-B', fontSize=13, leading=17,
-         textColor=HexColor('#0d5c63'), spaceBefore=8, spaceAfter=4)
-sH2    = ParagraphStyle('H2', fontName='DV-B', fontSize=10, leading=14,
-         textColor=HexColor('#0d5c63'), spaceAfter=2)
-sBody  = ParagraphStyle('Bo', fontName='DV', fontSize=9, leading=14,
-         textColor=HexColor('#1a1a2e'), spaceAfter=3)
-sPro   = ParagraphStyle('Pr', fontName='DV-I', fontSize=9, leading=14,
-         textColor=HexColor('#1a8a94'), spaceAfter=4)
-sImg   = ParagraphStyle('Im', fontName='DV-I', fontSize=8, leading=12,
-         textColor=HexColor('#555555'), spaceAfter=4, alignment=1)
-sAlert = ParagraphStyle('Al', fontName='DV-B', fontSize=9, leading=13,
+# Styles — slightly larger on A3
+sTitle = ParagraphStyle('TT', fontName='DV-B', fontSize=26, leading=32,
+         textColor=HexColor('#0d5c63'), spaceAfter=5, alignment=1)
+sSub   = ParagraphStyle('TS', fontName='DV-I', fontSize=12, leading=16,
+         textColor=HexColor('#1a8a94'), spaceAfter=3, alignment=1)
+sH1    = ParagraphStyle('H1', fontName='DV-B', fontSize=15, leading=20,
+         textColor=HexColor('#0d5c63'), spaceBefore=10, spaceAfter=5)
+sH2    = ParagraphStyle('H2', fontName='DV-B', fontSize=11, leading=15,
+         textColor=HexColor('#0d5c63'), spaceAfter=3)
+sBody  = ParagraphStyle('Bo', fontName='DV', fontSize=10, leading=15,
+         textColor=HexColor('#1a1a2e'), spaceAfter=4)
+sPro   = ParagraphStyle('Pr', fontName='DV-I', fontSize=10, leading=15,
+         textColor=HexColor('#1a8a94'), spaceAfter=5)
+sImg   = ParagraphStyle('Im', fontName='DV-I', fontSize=9, leading=13,
+         textColor=HexColor('#555555'), spaceAfter=5, alignment=1)
+sAlert = ParagraphStyle('Al', fontName='DV-B', fontSize=10, leading=14,
          textColor=HexColor('#721c24'), spaceAfter=0)
-sMem   = ParagraphStyle('MH', fontName='DV-B', fontSize=8.5, leading=13,
+sMem   = ParagraphStyle('MH', fontName='DV-B', fontSize=10, leading=14,
          textColor=HexColor('#856404'), spaceAfter=0)
 
 def bp(text, st=None):
     return Paragraph(text, st or sBody)
 
 def sec_header(title, story):
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 8))
     story.append(Paragraph(title, sH1))
 
 def divider(story):
-    story.append(HRFlowable(width=CW, thickness=0.5, color=TEAL_M, spaceAfter=4))
+    story.append(Spacer(1, 4))
+    story.append(HRFlowable(width=CW, thickness=0.6, color=TEAL_M, spaceAfter=6))
 
 def plain_table(data, widths, header=True):
     rows = []
@@ -78,9 +89,9 @@ def plain_table(data, widths, header=True):
         ('BACKGROUND',(0,0),(-1,0),TEAL_L),
         ('TEXTCOLOR',(0,0),(-1,0),TEAL),
         ('ROWBACKGROUNDS',(0,1),(-1,-1),[WHITE,TEAL_XL]),
-        ('GRID',(0,0),(-1,-1),0.5,TEAL_M),
-        ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),
-        ('LEFTPADDING',(0,0),(-1,-1),5),('RIGHTPADDING',(0,0),(-1,-1),5),
+        ('GRID',(0,0),(-1,-1),0.6,TEAL_M),
+        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),
+        ('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),
         ('VALIGN',(0,0),(-1,-1),'TOP'),
     ]))
     return t
@@ -88,53 +99,56 @@ def plain_table(data, widths, header=True):
 def alert_box(text, story):
     t = Table([[Paragraph(f'<b>ALERT: {text}</b>', sAlert)]], colWidths=[CW])
     t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),RED_L),
-        ('BOX',(0,0),(-1,-1),1.5,RED_D),
-        ('LEFTPADDING',(0,0),(-1,-1),10),('RIGHTPADDING',(0,0),(-1,-1),10),
-        ('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6)]))
-    story.append(t); story.append(Spacer(1,4))
+        ('BOX',(0,0),(-1,-1),2,RED_D),
+        ('LEFTPADDING',(0,0),(-1,-1),12),('RIGHTPADDING',(0,0),(-1,-1),12),
+        ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8)]))
+    story.append(t); story.append(Spacer(1,6))
 
 def info_box(text, story, color=None, border=None):
     bg = color or BLUE_L; bd = border or BLUE_D
     t = Table([[Paragraph(text, sBody)]], colWidths=[CW])
     t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),bg),
-        ('BOX',(0,0),(-1,-1),1.5,bd),
-        ('LEFTPADDING',(0,0),(-1,-1),10),('RIGHTPADDING',(0,0),(-1,-1),10),
-        ('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6)]))
-    story.append(t); story.append(Spacer(1,4))
+        ('BOX',(0,0),(-1,-1),2,bd),
+        ('LEFTPADDING',(0,0),(-1,-1),12),('RIGHTPADDING',(0,0),(-1,-1),12),
+        ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8)]))
+    story.append(t); story.append(Spacer(1,6))
 
 def image_search_box(term, site, story):
     txt = f'IMAGE: Search <b>"{term}"</b> on <b>{site}</b> to see a picture of this.'
     t = Table([[Paragraph(txt, sImg)]], colWidths=[CW])
     t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),HexColor('#f8f9fa')),
         ('BOX',(0,0),(-1,-1),1,HexColor('#adb5bd')),
-        ('LEFTPADDING',(0,0),(-1,-1),8),('RIGHTPADDING',(0,0),(-1,-1),8),
-        ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
-    story.append(t); story.append(Spacer(1,4))
+        ('LEFTPADDING',(0,0),(-1,-1),10),('RIGHTPADDING',(0,0),(-1,-1),10),
+        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5)]))
+    story.append(t); story.append(Spacer(1,5))
 
 def professor_says(text, story):
     t = Table([[Paragraph(f'<i>Professor says: "{text}"</i>', sPro)]], colWidths=[CW])
     t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),TEAL_XL),
-        ('BOX',(0,0),(-1,-1),1,TEAL_M),
-        ('LEFTPADDING',(0,0),(-1,-1),10),('RIGHTPADDING',(0,0),(-1,-1),10),
-        ('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6)]))
-    story.append(t); story.append(Spacer(1,4))
+        ('BOX',(0,0),(-1,-1),1.5,TEAL_M),
+        ('LEFTPADDING',(0,0),(-1,-1),12),('RIGHTPADDING',(0,0),(-1,-1),12),
+        ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8)]))
+    story.append(t); story.append(Spacer(1,6))
 
 def memory_hook(text, story):
     t = Table([[Paragraph(f'MEMORY: {text}', sMem)]], colWidths=[CW])
     t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),AMBER),
-        ('BOX',(0,0),(-1,-1),1.5,AMBER_B),
-        ('LEFTPADDING',(0,0),(-1,-1),10),('RIGHTPADDING',(0,0),(-1,-1),10),
-        ('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6)]))
-    story.append(t); story.append(Spacer(1,4))
+        ('BOX',(0,0),(-1,-1),2,AMBER_B),
+        ('LEFTPADDING',(0,0),(-1,-1),12),('RIGHTPADDING',(0,0),(-1,-1),12),
+        ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8)]))
+    story.append(t); story.append(Spacer(1,6))
 
 # ── PIL helpers ───────────────────────────────────────────────────────────────
-def arr_r(draw, x, y, length=36, col='#0d5c63'):
-    draw.line([(x,y),(x+length,y)], fill=col, width=2)
-    draw.polygon([(x+length,y),(x+length-7,y-4),(x+length-7,y+4)], fill=col)
+# On A3 with CW~700pt, PIL canvas W=900px → scale=0.778 pt/px
+# fB=28px → 21.8pt  fS=22px → 17.1pt  fXS=17px → 13.2pt  — all readable
 
-def arr_d(draw, x, y, length=28, col='#0d5c63'):
-    draw.line([(x,y),(x,y+length)], fill=col, width=2)
-    draw.polygon([(x,y+length),(x-4,y+length-7),(x+4,y+length-7)], fill=col)
+def arr_r(draw, x, y, length=44, col='#0d5c63', w=3):
+    draw.line([(x,y),(x+length,y)], fill=col, width=w)
+    draw.polygon([(x+length,y),(x+length-10,y-6),(x+length-10,y+6)], fill=col)
+
+def arr_d(draw, x, y, length=32, col='#0d5c63', w=3):
+    draw.line([(x,y),(x,y+length)], fill=col, width=w)
+    draw.polygon([(x,y+length),(x-6,y+length-10),(x+6,y+length-10)], fill=col)
 
 def i2r(img, W):
     scale = W / img.width
@@ -143,186 +157,302 @@ def i2r(img, W):
     buf = BytesIO(); img.save(buf, 'PNG'); buf.seek(0)
     return RLImage(buf, width=W, height=nH)
 
+def load_fonts(sizes):
+    fonts = {}
+    for name, sz in sizes.items():
+        try:
+            if 'B' in name:
+                fonts[name] = ImageFont.truetype(FONT_DIR+'DejaVuSans-Bold.ttf', sz)
+            else:
+                fonts[name] = ImageFont.truetype(FONT_DIR+'DejaVuSans.ttf', sz)
+        except:
+            fonts[name] = ImageFont.load_default()
+    return fonts
+
 print('Building PIL diagrams...')
 
-# ── PIL 1: Airway Anatomy ─────────────────────────────────────────────────────
+# ── PIL 1: Airway Anatomy — REDESIGNED ──────────────────────────────────────
 def make_airway_anatomy():
-    W, H = 900, 360
-    img = Image.new('RGB', (W, H), '#f0fafb')
+    W, H = 900, 700
+    img = Image.new('RGB', (W, H), '#f4fbfc')
     draw = ImageDraw.Draw(img)
-    try:
-        fB = ImageFont.truetype(FONT_DIR+'DejaVuSans-Bold.ttf', 13)
-        fS = ImageFont.truetype(FONT_DIR+'DejaVuSans.ttf', 11)
-        fXS= ImageFont.truetype(FONT_DIR+'DejaVuSans.ttf', 9)
-    except:
-        fB = fS = fXS = ImageFont.load_default()
-    draw.rectangle([0,0,W-1,H-1], fill='#f0fafb', outline='#1a8a94', width=2)
-    draw.text((W//2, 16), 'AIRWAY ANATOMY: WHERE EACH CONDITION OCCURS', font=fB, fill='#0d5c63', anchor='mm')
+    f = load_fonts({'T':30,'B':26,'S':20,'XS':17})
 
-    # Airway chain (top to bottom, left column)
+    # Outer border + title
+    draw.rectangle([0,0,W-1,H-1], fill='#f4fbfc', outline='#1a8a94', width=3)
+    draw.rectangle([0,0,W-1,52], fill='#0d5c63', outline='#0d5c63')
+    draw.text((W//2, 26), 'AIRWAY ANATOMY: WHERE EACH CONDITION OCCURS',
+              font=f['T'], fill='#ffffff', anchor='mm')
+
+    # Level definitions: (left box) → (right box)
+    # cx_L=left centre, cx_R=right centre, cy=vertical centre, bg, border, name, detail, r_name, r_detail
     levels = [
-        (200, 55,  '#fde8e8', '#c0392b', 'NOSE / MOUTH',    'Entry point for air and allergens'),
-        (200, 110, '#fef3e2', '#d4640a', 'PHARYNX (throat)', 'Shared passage for food and air'),
-        (200, 165, '#f5eef8', '#7d3c98', 'LARYNX (voice box)','Contains vocal cords. UPPER airway.'),
-        (200, 220, '#fff3cd', '#e6a817', 'TRACHEA (windpipe)','Carries air down to lungs.'),
-        (200, 275, '#e8f4fd', '#2471a3', 'BRONCHI (main tubes)','Left and right bronchus. Branches.'),
-        (200, 330, '#d4edda', '#28a745', 'BRONCHIOLES + ALVEOLI','Tiny airways. Gas exchange here.'),
+        ('#fde8e8','#c0392b',
+         'NOSE / MOUTH','Entry point for air and allergens',
+         'Allergens Enter Here','Pollens  |  Dust mite  |  Mould  |  Pet dander'),
+        ('#fef3e2','#d4640a',
+         'PHARYNX  (throat)','Shared passage — food and air',
+         'Post-Nasal Drip','Mucus drips down → triggers cough + bronchoconstriction'),
+        ('#f5eef8','#7d3c98',
+         'LARYNX  (voice box)','Contains vocal cords  |  UPPER airway',
+         'LARYNGOSPASM  /  VCD  /  OEDEMA','Anaphylaxis  |  HAE  |  ACE inhibitor angioedema'),
+        ('#fff3cd','#b8860b',
+         'TRACHEA  (windpipe)','Rigid cartilage rings  |  Cannot collapse',
+         'Tracheal Stenosis','Fixed obstruction  |  Stridor on both breathing in AND out'),
+        ('#e8f4fd','#2471a3',
+         'BRONCHI  (main tubes)','Left and right bronchus  |  Branches into lobes',
+         'Large Airway Obstruction','Foreign body  |  Tumour  |  Large mucus plug'),
+        ('#d4edda','#28a745',
+         'BRONCHIOLES  +  ALVEOLI','Tiny airways  |  Gas exchange happens here',
+         'ASTHMA  /  ALLERGIC BRONCHITIS','Bronchoconstriction  |  Inflammation  |  Mucus plugging'),
     ]
-    for cx, cy, bg, bd, name, detail in levels:
-        bw=330; bh=36
-        draw.rectangle([cx-bw//2, cy-bh//2, cx+bw//2, cy+bh//2], fill=bg, outline=bd, width=2)
-        draw.text((cx, cy-8), name, font=fB, fill=bd, anchor='mm')
-        draw.text((cx, cy+9), detail, font=fXS, fill='#1a1a2e', anchor='mm')
-        if cy < 330:
-            arr_d(draw, cx, cy+bh//2, length=16, col=bd)
 
-    # Right column: conditions at each level
-    conditions = [
-        (640, 55,  '#fde8e8', '#c0392b', 'Allergens enter here', 'Pollens, dust, moulds, pet dander'),
-        (640, 110, '#fef3e2', '#d4640a', 'Post-nasal drip', 'Can trigger cough + bronchoconstriction'),
-        (640, 165, '#f5eef8', '#7d3c98', 'LARYNGOSPASM', 'VCD. Laryngeal oedema. HAE. Anaphylaxis.'),
-        (640, 220, '#fff3cd', '#e6a817', 'Tracheal stenosis', 'Fixed obstruction. Stridor.'),
-        (640, 275, '#e8f4fd', '#2471a3', 'LARGE AIRWAY obstruction', 'Foreign body. Tumour. Mucus plug.'),
-        (640, 330, '#d4edda', '#28a745', 'ASTHMA / ALLERGIC BRONCHITIS', 'Bronchoconstriction. Inflammation. Mucus.'),
-    ]
-    for cx, cy, bg, bd, name, detail in conditions:
-        bw=290; bh=36
-        draw.rectangle([cx-bw//2, cy-bh//2, cx+bw//2, cy+bh//2], fill=bg, outline=bd, width=2)
-        draw.text((cx, cy-8), name, font=fB, fill=bd, anchor='mm')
-        draw.text((cx, cy+9), detail, font=fXS, fill='#1a1a2e', anchor='mm')
-        # connecting line
-        draw.line([(366, cy), (496, cy)], fill='#888888', width=1)
-    draw.text((440, H-14), 'Upper airway = larynx and above. Lower airway = below larynx.', font=fS, fill='#555555', anchor='mm')
+    box_h = 78
+    gap   = 18
+    start_y = 68
+    cx_L  = 218
+    cx_R  = 672
+    bw_L  = 390
+    bw_R  = 410
+    mid_x = (cx_L + bw_L//2 + cx_R - bw_R//2) // 2   # midpoint for connecting line
+
+    for i, (bg, bd, lname, ldetail, rname, rdetail) in enumerate(levels):
+        cy = start_y + i*(box_h+gap) + box_h//2
+
+        # Left box
+        lx0 = cx_L - bw_L//2; lx1 = cx_L + bw_L//2
+        draw.rectangle([lx0, cy-box_h//2, lx1, cy+box_h//2],
+                       fill=bg, outline=bd, width=3)
+        draw.text((cx_L, cy - 16), lname, font=f['B'], fill=bd, anchor='mm')
+        draw.text((cx_L, cy + 14), ldetail, font=f['XS'], fill='#333333', anchor='mm')
+
+        # Right box
+        rx0 = cx_R - bw_R//2; rx1 = cx_R + bw_R//2
+        draw.rectangle([rx0, cy-box_h//2, rx1, cy+box_h//2],
+                       fill=bg, outline=bd, width=3)
+        draw.text((cx_R, cy - 16), rname, font=f['B'], fill=bd, anchor='mm')
+        draw.text((cx_R, cy + 14), rdetail, font=f['XS'], fill='#333333', anchor='mm')
+
+        # Connecting dashed line
+        for dx in range(lx1+6, rx0-6, 14):
+            draw.line([(dx, cy),(min(dx+8, rx0-6), cy)], fill='#aaaaaa', width=2)
+
+        # Down arrow on left (except last)
+        if i < len(levels)-1:
+            arr_d(draw, cx_L, cy+box_h//2, length=gap, col=bd, w=3)
+
+    # Footer labels
+    draw.rectangle([0, H-36, W-1, H-1], fill='#0d5c63')
+    draw.text((230, H-18),
+              'UPPER AIRWAY = larynx and above  |  STRIDOR = breathing IN',
+              font=f['XS'], fill='#ffffff', anchor='mm')
+    draw.text((670, H-18),
+              'LOWER AIRWAY = below larynx  |  WHEEZE = breathing OUT',
+              font=f['XS'], fill='#aaffcc', anchor='mm')
     return i2r(img, CW)
 
-# ── PIL 2: Asthma Pathophysiology ─────────────────────────────────────────────
+# ── PIL 2: Asthma Pathophysiology — REDESIGNED ───────────────────────────────
 def make_asthma_path():
-    W, H = 900, 380
-    img = Image.new('RGB', (W, H), '#fff8f0')
+    W, H = 900, 560
+    img = Image.new('RGB', (W, H), '#fffaf5')
     draw = ImageDraw.Draw(img)
-    try:
-        fB = ImageFont.truetype(FONT_DIR+'DejaVuSans-Bold.ttf', 13)
-        fS = ImageFont.truetype(FONT_DIR+'DejaVuSans.ttf', 11)
-        fXS= ImageFont.truetype(FONT_DIR+'DejaVuSans.ttf', 9)
-    except:
-        fB = fS = fXS = ImageFont.load_default()
-    draw.rectangle([0,0,W-1,H-1], fill='#fff8f0', outline='#d4640a', width=2)
-    draw.text((W//2, 16), 'ASTHMA: NORMAL AIRWAY vs ASTHMATIC AIRWAY', font=fB, fill='#d4640a', anchor='mm')
+    f = load_fonts({'T':28,'B':24,'S':20,'XS':17})
 
-    # LEFT: Normal airway (cross-section)
-    draw.rectangle([20, 35, 420, H-20], fill='#d4edda', outline='#28a745', width=2)
-    draw.text((220, 52), 'NORMAL AIRWAY', font=fB, fill='#155724', anchor='mm')
-    # Draw airway cross-section (circle)
-    draw.ellipse([120, 70, 320, 200], fill='#ffffff', outline='#28a745', width=3)
-    draw.ellipse([155, 100, 285, 170], fill='#e8f4fd', outline='#2471a3', width=2)
-    draw.text((220, 135), 'WIDE OPEN', font=fB, fill='#2471a3', anchor='mm')
-    draw.text((220, 150), 'LUMEN (air space)', font=fXS, fill='#2471a3', anchor='mm')
-    # Labels
-    items_n = [
-        (220, 220, 'Thin smooth muscle layer'),
-        (220, 238, 'Normal thin mucus lining'),
-        (220, 256, 'No inflammation'),
-        (220, 274, 'Air flows freely'),
-        (220, 292, 'Normal FEV1/FVC ratio > 70%'),
+    draw.rectangle([0,0,W-1,H-1], fill='#fffaf5', outline='#d4640a', width=3)
+    draw.rectangle([0,0,W-1,50], fill='#d4640a')
+    draw.text((W//2, 25), 'ASTHMA: NORMAL AIRWAY  vs  ASTHMATIC AIRWAY',
+              font=f['T'], fill='#ffffff', anchor='mm')
+
+    # ── Normal airway (left panel) ──
+    draw.rectangle([15, 58, 430, H-40], fill='#eafff0', outline='#28a745', width=3)
+    draw.text((222, 78), 'NORMAL AIRWAY', font=f['B'], fill='#155724', anchor='mm')
+
+    # Large circle = lumen
+    draw.ellipse([90, 100, 360, 280], fill='#ffffff', outline='#28a745', width=4)
+    draw.ellipse([145, 140, 305, 240], fill='#d0f0ff', outline='#2471a3', width=3)
+    draw.text((225, 190), 'WIDE OPEN', font=f['B'], fill='#2471a3', anchor='mm')
+    draw.text((225, 217), 'LUMEN', font=f['S'], fill='#2471a3', anchor='mm')
+
+    normal_items = [
+        'Thin smooth muscle wall',
+        'Thin normal mucus layer',
+        'No inflammation',
+        'Air flows freely',
+        'FEV1 / FVC ratio  > 70%',
     ]
-    for x, y, txt in items_n:
-        draw.text((x, y), txt, font=fXS, fill='#155724', anchor='mm')
+    for j, txt in enumerate(normal_items):
+        draw.text((222, 298 + j*34), txt, font=f['S'], fill='#155724', anchor='mm')
 
-    # RIGHT: Asthmatic airway
-    draw.rectangle([480, 35, W-20, H-20], fill='#fde8e8', outline='#c0392b', width=2)
-    draw.text((690, 52), 'ASTHMATIC AIRWAY (ATTACK)', font=fB, fill='#c0392b', anchor='mm')
-    # Thickened wall
-    draw.ellipse([570, 70, 810, 200], fill='#fde8e8', outline='#c0392b', width=8)
-    draw.ellipse([630, 100, 750, 170], fill='#fef3e2', outline='#d4640a', width=2)
-    # Mucus plug
-    draw.ellipse([655, 118, 725, 152], fill='#e6a817', outline='#856404', width=2)
-    draw.text((690, 135), 'MUCUS', font=fXS, fill='#856404', anchor='mm')
-    draw.text((690, 148), 'PLUG', font=fXS, fill='#856404', anchor='mm')
-    # Wall label
-    draw.text((820, 135), 'THICK', font=fXS, fill='#c0392b', anchor='lm')
-    draw.text((820, 148), 'WALL', font=fXS, fill='#c0392b', anchor='lm')
-    items_a = [
-        (690, 220, '3 main problems:'),
-        (690, 238, '1. BRONCHOCONSTRICTION (muscle squeezes)'),
-        (690, 256, '2. INFLAMMATION (wall swells, thickens)'),
-        (690, 274, '3. MUCUS HYPERSECRETION (blocks lumen)'),
-        (690, 292, 'FEV1/FVC ratio LOW. REVERSIBLE with bronchodilator.'),
+    # ── Asthmatic airway (right panel) ──
+    draw.rectangle([455, 58, W-15, H-40], fill='#fff0f0', outline='#c0392b', width=3)
+    draw.text((678, 78), 'ASTHMATIC AIRWAY (ATTACK)', font=f['B'], fill='#c0392b', anchor='mm')
+
+    # Thick walled circle
+    draw.ellipse([525, 100, 835, 280], fill='#fde8e8', outline='#c0392b', width=12)
+    # Mucus plug fills most of lumen
+    draw.ellipse([607, 145, 753, 235], fill='#f5c518', outline='#b8860b', width=3)
+    draw.text((680, 178), 'MUCUS', font=f['B'], fill='#7a5500', anchor='mm')
+    draw.text((680, 205), 'PLUG', font=f['B'], fill='#7a5500', anchor='mm')
+
+    asthma_items = [
+        '1.  BRONCHOCONSTRICTION',
+        '    Muscle squeezes  --  airway narrows',
+        '2.  INFLAMMATION',
+        '    Wall swells  --  eosinophils invade',
+        '3.  MUCUS HYPERSECRETION',
+        '    Goblet cells over-produce thick mucus',
     ]
-    for x, y, txt in items_a:
-        draw.text((x, y), txt, font=fXS, fill='#721c24', anchor='mm')
+    for j, txt in enumerate(asthma_items):
+        col = '#c0392b' if txt.startswith(('1','2','3')) else '#721c24'
+        fnt = f['S'] if txt.startswith(('1','2','3')) else f['XS']
+        draw.text((678, 298 + j*30), txt, font=fnt, fill=col, anchor='mm')
 
-    # Triggers box at bottom
-    draw.rectangle([20, 315, W-20, H-20], fill='#fff3cd', outline='#e6a817', width=2)
-    draw.text((W//2, 332), 'COMMON TRIGGERS: Allergens | Cold air | Exercise | Smoke | Viral URTI | Emotion | NSAIDs/aspirin | Beta-blockers | Occupational', font=fXS, fill='#856404', anchor='mm')
-    draw.text((W//2, H-18), 'All three problems (constriction + inflammation + mucus) happen together during an attack.', font=fS, fill='#555555', anchor='mm')
+    # Footer
+    draw.rectangle([0, H-38, W-1, H-1], fill='#fff3cd', outline='#e6a817', width=2)
+    draw.text((W//2, H-19),
+              'TRIGGERS: Allergens  |  Cold air  |  Exercise  |  NSAIDs  |  Smoke  |  Viral URTI  |  Stress  |  GERD',
+              font=f['XS'], fill='#7a5500', anchor='mm')
     return i2r(img, CW)
 
-# ── PIL 3: Severity Classification ────────────────────────────────────────────
+# ── PIL 3: Severity Classification — REDESIGNED ──────────────────────────────
 def make_severity():
-    W, H = 900, 320
+    W, H = 900, 460
     img = Image.new('RGB', (W, H), '#ffffff')
     draw = ImageDraw.Draw(img)
-    try:
-        fB = ImageFont.truetype(FONT_DIR+'DejaVuSans-Bold.ttf', 13)
-        fS = ImageFont.truetype(FONT_DIR+'DejaVuSans.ttf', 10)
-        fXS= ImageFont.truetype(FONT_DIR+'DejaVuSans.ttf', 9)
-    except:
-        fB = fS = fXS = ImageFont.load_default()
-    draw.rectangle([0,0,W-1,H-1], fill='#ffffff', outline='#1a8a94', width=2)
-    draw.text((W//2, 16), 'ACUTE ASTHMA: SEVERITY CLASSIFICATION (BTS/SIGN)', font=fB, fill='#0d5c63', anchor='mm')
+    f = load_fonts({'T':28,'B':24,'S':20,'XS':17})
+
+    draw.rectangle([0,0,W-1,H-1], fill='#ffffff', outline='#1a8a94', width=3)
+    draw.rectangle([0,0,W-1,50], fill='#0d5c63')
+    draw.text((W//2, 25), 'ACUTE ASTHMA: SEVERITY CLASSIFICATION  (BTS / SIGN)',
+              font=f['T'], fill='#ffffff', anchor='mm')
 
     grades = [
-        ('#d4edda','#28a745','MODERATE','PEFR 50-75%','SpO2 >= 92%','Normal speech','HR < 110','RR < 25'),
-        ('#fff3cd','#e6a817','ACUTE SEVERE','PEFR 33-50%','SpO2 >= 92%','Cannot complete','sentences','HR >= 110 or RR >= 25'),
-        ('#fde8e8','#c0392b','LIFE-THREATENING','PEFR < 33%','SpO2 < 92%','Silent chest','Cyanosis / Exhaustion','Bradycardia / Confusion'),
-        ('#f5eef8','#7d3c98','NEAR-FATAL','Rising PaCO2','Needs mechanical','ventilation','IMMEDIATE ICU','Arrest risk'),
+        ('#d4edda','#28a745','MODERATE',
+         'PEFR  50 - 75%','SpO2  >=  92%','Normal speech  |  HR < 110  |  RR < 25',
+         'Treat in A&E  |  Salbutamol + Prednisolone oral'),
+        ('#fff3cd','#e6a817','ACUTE SEVERE',
+         'PEFR  33 - 50%','SpO2  >=  92%','Cannot complete sentence  |  HR >= 110  |  RR >= 25',
+         'Admit  |  Salbutamol + Ipratropium + Hydrocortisone IV'),
+        ('#fde8e8','#c0392b','LIFE-THREATENING',
+         'PEFR  < 33%','SpO2  < 92%','Silent chest  |  Cyanosis  |  Exhaustion  |  Confusion',
+         'Add Magnesium sulphate 2g IV  |  ITU review NOW'),
+        ('#f5eef8','#7d3c98','NEAR - FATAL',
+         'PaCO2 RISING','Needs ventilator','Bradycardia  |  Absent breath sounds  |  Pre-arrest',
+         'Immediate ITU  |  Intubation  |  ICU care'),
     ]
-    bw=(W-40)//4-6; bh=H-50
-    sx=22
-    for i,(bg,bd,t1,t2,t3,t4,t5,t6) in enumerate(grades):
-        x0=sx+i*(bw+6); y0=36
-        draw.rectangle([x0,y0,x0+bw,y0+bh], fill=bg, outline=bd, width=2)
-        draw.text((x0+bw//2, y0+18), t1, font=fB, fill=bd, anchor='mm')
-        draw.line([(x0+10,y0+30),(x0+bw-10,y0+30)], fill=bd, width=1)
-        for j, txt in enumerate([t2,t3,t4,t5,t6]):
-            draw.text((x0+bw//2, y0+46+j*40), txt, font=fXS, fill='#1a1a2e', anchor='mm')
-    draw.text((W//2, H-12), 'PEFR = Peak Expiratory Flow Rate (% of personal best or predicted)', font=fS, fill='#555555', anchor='mm')
+
+    bw = (W - 50) // 4 - 6
+    for i, (bg, bd, title, l1, l2, l3, l4) in enumerate(grades):
+        x0 = 15 + i * (bw + 6)
+        y0 = 58
+        bh = H - 80
+        draw.rectangle([x0, y0, x0+bw, y0+bh], fill=bg, outline=bd, width=3)
+        # Title bar
+        draw.rectangle([x0, y0, x0+bw, y0+42], fill=bd)
+        draw.text((x0+bw//2, y0+21), title, font=f['B'], fill='#ffffff', anchor='mm')
+        # Lines
+        cx = x0 + bw//2
+        draw.text((cx, y0+70),  l1, font=f['S'], fill='#1a1a2e', anchor='mm')
+        draw.text((cx, y0+100), l2, font=f['S'], fill='#1a1a2e', anchor='mm')
+        # divider
+        draw.line([(x0+10, y0+118),(x0+bw-10, y0+118)], fill=bd, width=2)
+        draw.text((cx, y0+142), l3, font=f['XS'], fill='#1a1a2e', anchor='mm')
+        draw.text((cx, y0+165), '', font=f['XS'], fill='#1a1a2e', anchor='mm')
+        draw.line([(x0+10, y0+178),(x0+bw-10, y0+178)], fill=bd, width=2)
+        # Action
+        for k, part in enumerate(l4.split('  |  ')):
+            draw.text((cx, y0+200+k*26), part.strip(), font=f['XS'], fill=bd, anchor='mm')
+
+    draw.rectangle([0,H-28,W-1,H-1], fill='#0d5c63')
+    draw.text((W//2, H-14),
+              'PEFR = Peak Expiratory Flow Rate  --  compare to personal best or predicted',
+              font=f['XS'], fill='#ffffff', anchor='mm')
     return i2r(img, CW)
 
-# ── PIL 4: Differential Diagnosis Map ─────────────────────────────────────────
+# ── PIL 4: Differential Diagnosis Map — REDESIGNED ───────────────────────────
 def make_diff_map():
-    W, H = 900, 360
-    img = Image.new('RGB', (W, H), '#f0fafb')
+    W, H = 900, 560
+    img = Image.new('RGB', (W, H), '#f4fbfc')
     draw = ImageDraw.Draw(img)
-    try:
-        fB = ImageFont.truetype(FONT_DIR+'DejaVuSans-Bold.ttf', 12)
-        fS = ImageFont.truetype(FONT_DIR+'DejaVuSans.ttf', 10)
-        fXS= ImageFont.truetype(FONT_DIR+'DejaVuSans.ttf', 9)
-    except:
-        fB = fS = fXS = ImageFont.load_default()
-    draw.rectangle([0,0,W-1,H-1], fill='#f0fafb', outline='#1a8a94', width=2)
-    draw.text((W//2, 16), 'DIFFERENTIAL DIAGNOSIS: RECURRENT BREATHLESSNESS IN YOUNG ADULT', font=fB, fill='#0d5c63', anchor='mm')
+    f = load_fonts({'T':28,'B':22,'S':19,'XS':16})
+
+    draw.rectangle([0,0,W-1,H-1], fill='#f4fbfc', outline='#1a8a94', width=3)
+    draw.rectangle([0,0,W-1,52], fill='#0d5c63')
+    draw.text((W//2, 26),
+              'ALL POSSIBLE CAUSES OF RECURRENT BREATHLESSNESS IN YOUNG ADULT',
+              font=f['T'], fill='#ffffff', anchor='mm')
 
     diffs = [
-        # (cx, cy, bg, bd, title, clue1, clue2)
-        (130, 95,  '#d4edda','#28a745','ASTHMA','WHEEZE. Responds to','steroids + bronchodilator.'),
-        (340, 95,  '#f5eef8','#7d3c98','VCD / ILO','STRIDOR not wheeze.','Does NOT respond to Rx.'),
-        (560, 95,  '#fde8e8','#c0392b','ANAPHYLAXIS','Urticaria. Hypotension.','Adrenaline reverses it.'),
-        (770, 95,  '#fef3e2','#d4640a','LARYNGOSPASM','Very sudden. GERD link.','Brief episodes.'),
-        (130, 230, '#e8f4fd','#2471a3','ABPA','Eosinophilia. Aspergillus','IgE raised. Plugs.'),
-        (340, 230, '#fff3cd','#e6a817','HAE','Low C4. Family history.','NO urticaria. Slow onset.'),
-        (560, 230, '#fde8e8','#856404','EOSINOPHILIC\nBRONCHITIS','Cough only. No wheeze.','FeNO raised. Sputum eos.'),
-        (770, 230, '#f0fafb','#0d5c63','GERD-INDUCED','Night symptoms. Acid taste.','Responds to PPI.'),
+        # row 1
+        (110, 155, '#d4edda','#28a745',
+         'ASTHMA',
+         'Wheeze on breathing OUT',
+         'Responds to salbutamol',
+         'Childhood history  |  Atopy'),
+        (330, 155, '#f5eef8','#7d3c98',
+         'VCD  /  ILO',
+         'STRIDOR on breathing IN',
+         'Does NOT respond to salbutamol',
+         'Anxiety link  |  Speech therapy'),
+        (555, 155, '#fde8e8','#c0392b',
+         'ANAPHYLAXIS',
+         'Urticaria + swelling + wheeze',
+         'Adrenaline 0.5mg IM reverses it',
+         'Triggers: nuts / bees / drugs'),
+        (780, 155, '#fef3e2','#d4640a',
+         'LARYNGOSPASM',
+         'Sudden  --  seconds  --  then OK',
+         'GERD most common trigger',
+         'Treats with PPI + breathing Rx'),
+        # row 2
+        (110, 360, '#e8f4fd','#2471a3',
+         'ABPA',
+         'Asthma + brown mucus plugs',
+         'Total IgE > 1000  |  Aspergillus IgE',
+         'Central bronchiectasis on CT'),
+        (330, 360, '#fff3cd','#e6a817',
+         'HAE',
+         'Swelling WITHOUT urticaria',
+         'C4 low  |  C1-INH low',
+         'Adrenaline DOES NOT WORK'),
+        (555, 360, '#fde8e8','#856404',
+         'EOSINOPHILIC BRONCHITIS',
+         'COUGH only  --  no wheeze',
+         'Normal spirometry  |  FeNO raised',
+         'ICS very effective treatment'),
+        (780, 360, '#e0f4f5','#0d5c63',
+         'GERD-INDUCED',
+         'Cough  |  Hoarse  |  Night gasping',
+         'Worse lying flat  |  after meals',
+         'Treat with PPI + lifestyle'),
     ]
-    bw=160; bh=80
-    for cx,cy,bg,bd,t1,t2,t3 in diffs:
-        draw.rectangle([cx-bw//2,cy-bh//2,cx+bw//2,cy+bh//2], fill=bg, outline=bd, width=2)
-        draw.text((cx, cy-28), t1, font=fB, fill=bd, anchor='mm')
-        draw.text((cx, cy-5), t2, font=fXS, fill='#1a1a2e', anchor='mm')
-        draw.text((cx, cy+13), t3, font=fXS, fill='#1a1a2e', anchor='mm')
 
-    draw.text((W//2, H-30), 'KEY QUESTION: Does it respond to bronchodilators and steroids?', font=fS, fill='#0d5c63', anchor='mm')
-    draw.text((W//2, H-14), 'YES = asthma-spectrum. NO = upper airway / non-asthmatic cause.', font=fS, fill='#555555', anchor='mm')
+    bw = 190; bh = 168
+    for cx, cy, bg, bd, t1, t2, t3, t4 in diffs:
+        x0 = cx - bw//2; y0 = cy - bh//2
+        draw.rectangle([x0, y0, x0+bw, y0+bh], fill=bg, outline=bd, width=3)
+        # Title bar
+        draw.rectangle([x0, y0, x0+bw, y0+34], fill=bd)
+        draw.text((cx, y0+17), t1, font=f['B'], fill='#ffffff', anchor='mm')
+        # Content lines
+        draw.text((cx, y0+55),  t2, font=f['XS'], fill='#1a1a2e', anchor='mm')
+        draw.line([(x0+8, y0+72),(x0+bw-8, y0+72)], fill=bd, width=1)
+        draw.text((cx, y0+88),  t3, font=f['XS'], fill='#1a1a2e', anchor='mm')
+        draw.line([(x0+8, y0+104),(x0+bw-8, y0+104)], fill=bd, width=1)
+        draw.text((cx, y0+120), t4, font=f['XS'], fill='#1a1a2e', anchor='mm')
+
+    # Row labels
+    draw.text((W//2, 242),
+              'RESPONDS to bronchodilators + steroids = LOWER AIRWAY (asthma spectrum)',
+              font=f['S'], fill='#28a745', anchor='mm')
+    draw.text((W//2, 266),
+              'Does NOT respond = UPPER AIRWAY or NON-ASTHMATIC cause',
+              font=f['S'], fill='#c0392b', anchor='mm')
+
+    draw.rectangle([0,H-34,W-1,H-1], fill='#0d5c63')
+    draw.text((W//2, H-17),
+              'KEY QUESTION: Is the sound on breathing IN (stridor=upper) or OUT (wheeze=lower)?',
+              font=f['S'], fill='#ffffff', anchor='mm')
     return i2r(img, CW)
 
 img_airway   = make_airway_anatomy()
@@ -331,737 +461,510 @@ img_severity = make_severity()
 img_diffmap  = make_diff_map()
 print('PIL diagrams done.')
 
+# ─────────────────────────────────────────────────────────────────────────────
+# STORY
+# ─────────────────────────────────────────────────────────────────────────────
 story = []
 
-# ── Title ──────────────────────────────────────────────────────────────────────
 story.append(Paragraph('ACUTE ASTHMA, LARYNGEAL SPASM &amp; ALLERGIC AIRWAY DISEASE', sTitle))
-story.append(Paragraph('Comprehensive MRCP Revision Note | Parts 1, 2 &amp; PACES', sSub))
+story.append(Paragraph('Comprehensive MRCP Revision Note  |  Parts 1, 2 &amp; PACES', sSub))
 story.append(Paragraph('All Causes of Recurrent Breathlessness in a Young Adult — From Zero to Expert', sSub))
-story.append(Spacer(1, 8))
-story.append(HRFlowable(width=CW, thickness=2, color=TEAL, spaceAfter=6))
+story.append(Spacer(1, 10))
+story.append(HRFlowable(width=CW, thickness=2.5, color=TEAL, spaceAfter=8))
 
-# ── §1 CLINICAL SCENARIO + OVERVIEW ──────────────────────────────────────────
+# §1
 sec_header('Section 1: The Clinical Scenario — Understanding This Patient', story)
+professor_says('A 22-year-old woman. Childhood episodes of breathlessness. Similar episodes now for 4-5 days. Responds to inhaled and IV steroids. But keeps coming back. Sometimes only coughing. Sometimes completely breathless. Let us understand every possible cause — and solve this puzzle completely.', story)
 
-professor_says('Before we learn theory, let us understand this specific patient. A 22-year-old woman. Childhood episodes of breathlessness. Similar episodes for 4-5 days. Responds to inhaled steroids and IV steroids. But keeps coming back. Sometimes coughing. Sometimes completely breathless. This is the puzzle we will solve completely.', story)
-
-story.append(bp('<b>The Clinical Scenario:</b>'))
-scenario_points = [
-    '<b>Age:</b> 22–24 years old. Young adult.',
-    '<b>Sex:</b> Female. This is important — females have higher rates of severe asthma and certain conditions (VCD, HAE).',
-    '<b>Past history:</b> Similar episodes in childhood. This strongly suggests atopic (allergic) disease — asthma, allergic rhinitis, or eczema.',
-    '<b>Current problem:</b> Episodes over 4–5 days. Not one single attack — RECURRENT attacks. This tells us the trigger is ongoing or the treatment is not fully stopping the problem.',
-    '<b>Response to treatment:</b> Responds to inhaled steroids + IV prednisolone/dexamethasone. This confirms airway inflammation is part of the problem.',
-    '<b>But keeps recurring:</b> This means either: (1) The trigger is still present. (2) The treatment dose is not enough. (3) There is a second diagnosis alongside asthma. (4) The patient is not using inhalers correctly.',
-    '<b>Symptoms:</b> Sometimes coughing only. Sometimes completely breathless. Variable symptoms suggest reversible airway obstruction — hallmark of asthma.',
-]
-for pt in scenario_points:
+story.append(bp('<b>What does this history tell us immediately?</b>'))
+for pt in [
+    '<b>Childhood episodes</b> → strongly suggests ATOPIC (allergic) disease — asthma, allergic rhinitis, eczema.',
+    '<b>Responds to steroids</b> → confirms airway INFLAMMATION is part of the problem.',
+    '<b>But keeps recurring</b> → either: the trigger is still present, the dose is not enough, inhaler technique is wrong, or a second diagnosis is being missed.',
+    '<b>Sometimes cough only, sometimes breathless</b> → VARIABLE symptoms = hallmark of reversible airway obstruction = asthma pattern.',
+    '<b>Female, 22 years old</b> → also consider VCD (vocal cord dysfunction — common in young women), premenstrual asthma, and HAE.',
+]:
     story.append(bp(f'• {pt}'))
-story.append(Spacer(1, 5))
-
-story.append(bp('<b>The Big Question — What Is Causing This?</b>'))
-story.append(bp('There are MANY possible causes of recurrent breathlessness and cough in a young woman. We will study all of them in detail. The key is to diagnose correctly — because the treatment is COMPLETELY DIFFERENT for each condition.'))
-story.append(Spacer(1, 3))
+story.append(Spacer(1, 8))
 
 story.append(img_diffmap)
-story.append(bp('Differential diagnosis map — all possible causes of recurrent breathlessness in a young adult', sImg))
-story.append(Spacer(1, 5))
+story.append(bp('All possible diagnoses at a glance — upper vs lower airway causes', sImg))
+story.append(Spacer(1, 8))
 
 overview_table = [
-    ['Condition','Simple Name','Main Symptom','Responds to Steroids?','Key Clue'],
-    ['Asthma','Airways close up\nand get inflamed','Wheeze + breathlessness\n+ cough. Episodic.','YES — strongly','Childhood history.\nReversible obstruction.\nPEFR improves.'],
-    ['VCD / ILO\n(Vocal Cord Dysfunction)','Vocal cords close\ninwards during breathing','STRIDOR (high-pitched\nnoise on breathing IN).\nNot wheeze.','NO — does not respond','Anxiety link.\nNormal tests between\nepisodes. Diagnosed\nby laryngoscopy.'],
-    ['Laryngospasm\n(larynx muscle spasm)','Brief sudden complete\nclosure of vocal cords','Sudden gasping.\nCannot breathe for\na few seconds.\nThen resolves.','NO — brief and\nself-limiting','GERD trigger.\nAnxiety. Chlorine.\nBreathing exercises\ncure it.'],
-    ['Laryngeal Oedema\n(Anaphylaxis)','Allergic swelling of\nthe larynx — airway\nbecomes blocked','Stridor. Drooling.\nRapid onset.\nMay have hives/rash.','PARTIAL — needs\nadrenaline primarily','Triggers: nuts,\nbee sting, drug.\nAdrenaline reverses it.'],
-    ['HAE\n(Hereditary Angioedema)','Inherited swelling of\ndeep tissues —\ncan block airway','Swelling of face,\nlips, tongue, larynx.\nAbdominal colic.','NO — does NOT\nrespond to adrenaline,\nsteroids, or antihistamine','C4 low. C1-INH\nlow. Family history.\nNo urticaria (hives).'],
-    ['ABPA\n(Allergic Bronchopulmonary\nAspergillosis)','Allergic reaction to\nfungus (Aspergillus)\nliving in airways','Wheezing. Brownish\nmucus plugs.\nRecurrent collapse.','YES — steroids\nclear it','Aspergillus IgE high.\nCentral bronchiectasis\non CT. Eosinophilia.'],
-    ['Eosinophilic Bronchitis','Airway inflammation\nwith high eosinophil\ncells. Not asthma.','COUGH — only.\nNo wheeze.\nNo airflow obstruction.','YES — ICS works','FeNO raised.\nSputum eosinophils.\nNormal spirometry.'],
-    ['GERD-Induced\n(Acid reflux)','Stomach acid flows\nup to larynx and\ntriggers airway reflex','Chronic cough.\nHoarseness.\nWorse at night / after\nmeals. Lying flat.','PARTIAL — PPI\nis the main treatment','Heartburn history.\nNo wheeze between\nepisodes. PPI test.'],
+    ['Condition','Key Sound','Responds to Salbutamol?','Responds to Steroids?','Key Test'],
+    ['Asthma','Expiratory wheeze\n(breathing OUT)','YES — strongly','YES — strongly','Spirometry reversibility.\nPEFR diary. FeNO.'],
+    ['VCD / ILO','Inspiratory STRIDOR\n(breathing IN)','NO','NO','Laryngoscopy during attack.\nFlow-volume loop.'],
+    ['Laryngospasm','Silent or stridor.\nLasts seconds.','NO','NO','24h pH monitoring.\n(GERD link)'],
+    ['Anaphylaxis /\nLaryngeal oedema','Stridor.\nRapid swelling.','NO','Partial only','Tryptase.\nSkin prick test.'],
+    ['HAE','Stridor.\nSlow swelling\n(hours).','NO','NO — does NOT work','C4 level (LOW).\nC1-INH level.'],
+    ['ABPA','Wheeze.\nBrownish mucus plugs.','Partial','YES','Total IgE > 1000.\nAspergillus IgE.\nCT thorax.'],
+    ['Eosinophilic\nBronchitis','Cough only.\nNo wheeze.','NO obstruction','YES — ICS works well','FeNO raised.\nNormal spirometry.\nSputum eosinophils.'],
+    ['GERD-induced','Cough. Hoarse.\nNight gasping.','No','Partial','24h pH monitoring.\nPPI trial.'],
 ]
-story.append(plain_table(overview_table,[CW*0.14,CW*0.16,CW*0.17,CW*0.17,CW*0.36]))
-
-memory_hook('RECURRENT BREATHLESSNESS IN YOUNG ADULT: Think ASTHMA first. Then ask: does it respond to bronchodilators? Does it have stridor (upper airway) or wheeze (lower airway)? Is there urticaria (anaphylaxis)? Family history of swelling (HAE)? Acid reflux? Anxiety?', story)
+story.append(plain_table(overview_table,[CW*0.14,CW*0.14,CW*0.14,CW*0.14,CW*0.44]))
+memory_hook('RECURRENT BREATHLESSNESS IN YOUNG WOMAN: Is the sound on BREATHING IN (stridor = upper airway = VCD/laryngeal) or BREATHING OUT (wheeze = lower airway = asthma)? Does salbutamol help? If NO → not asthma. Check C4 for HAE. Check GERD. Check anxiety/VCD.', story)
 divider(story)
 
-# ── §2 ANATOMY ────────────────────────────────────────────────────────────────
+# §2
 sec_header('Section 2: Anatomy — The Airway From Top to Bottom', story)
-
-professor_says('To understand all these conditions, you must know the airway anatomy. Think of the airway as a tree — wide trunk (trachea) that branches into smaller and smaller twigs (bronchioles). Different conditions affect different parts of this tree.', story)
+professor_says('Think of the airway as a tree. Wide trunk (trachea) branches into smaller and smaller twigs (bronchioles). Different conditions block different parts of this tree. Upper tree = stridor. Lower tree = wheeze.', story)
 
 story.append(img_airway)
-story.append(bp('Airway anatomy showing where each condition causes obstruction', sImg))
-story.append(Spacer(1, 5))
+story.append(bp('Airway anatomy — each level, its structure, and which condition blocks it', sImg))
+story.append(Spacer(1, 8))
 
-story.append(bp('<b>Upper Airway (from nose to larynx):</b>'))
+story.append(bp('<b>Upper Airway (nose → larynx):</b>'))
 for pt in [
-    '<b>Nose and sinuses:</b> Air enters. Warmed, moistened, filtered. Allergens (pollen, dust, mould spores) enter here first. Allergic rhinitis (hayfever) starts here and can worsen asthma.',
-    '<b>Pharynx (FAR-inks):</b> Throat. The common passage for food and air. Post-nasal drip (mucus dripping down from nose) can trigger cough and bronchospasm.',
-    '<b>Larynx (LAIR-inks) = the voice box:</b> Contains the vocal cords (two muscular folds). They vibrate to make sound. They should open fully during breathing. When they close abnormally = laryngospasm or VCD. The larynx is protected by the epiglottis (flap that closes during swallowing).',
-    '<b>Vocal cords:</b> In normal breathing: wide open (like a V shape). In laryngospasm/VCD: close together (like a tiny slit — obstruction of airflow). In laryngeal oedema (swelling): swollen shut.',
-    '<b>Epiglottis (ep-ih-GLOT-iss):</b> The flap above the larynx. Closes during swallowing. Can swell in severe anaphylaxis or epiglottitis (rare in adults).',
+    '<b>Nose and sinuses:</b> Air enters here. Warmed, moistened, filtered. Allergens (pollen, dust, mould) enter first. Allergic rhinitis starts here and can worsen asthma below.',
+    '<b>Pharynx (FAR-inks):</b> Common passage for food and air. Post-nasal drip (mucus dripping down from a blocked nose) triggers cough and mild bronchoconstriction.',
+    '<b>Larynx (LAIR-inks) = voice box:</b> Contains the vocal cords. They should open WIDE during breathing in. When they close abnormally = laryngospasm or VCD. Site of anaphylactic and HAE swelling.',
+    '<b>Vocal cords:</b> Normal breathing = wide V-shape (open). VCD = close together (paradoxical closure during inspiration). Laryngeal oedema = swollen shut.',
+    '<b>Epiglottis:</b> Flap above larynx. Closes during swallowing. Can swell in severe anaphylaxis.',
 ]:
     story.append(bp(f'• {pt}'))
-story.append(Spacer(1, 5))
+story.append(Spacer(1, 6))
 
-story.append(bp('<b>Lower Airway (from trachea downwards):</b>'))
+story.append(bp('<b>Lower Airway (trachea → alveoli):</b>'))
 for pt in [
-    '<b>Trachea (TRAY-kee-ah) = windpipe:</b> The main central tube. 10–12cm long. Supported by C-shaped cartilage rings. Fixed — does not collapse. Tracheal stenosis (narrowing) causes a fixed obstruction.',
-    '<b>Carina (kah-RY-nah):</b> The point where the trachea splits into left and right bronchi. Very sensitive to cough reflex.',
-    '<b>Main bronchi (BRON-kye):</b> Right and left. Right bronchus is wider and more vertical — foreign bodies more commonly go to the right side.',
-    '<b>Lobar and segmental bronchi:</b> Smaller branches going to each part of the lung.',
-    '<b>Bronchioles (BRON-kee-oles):</b> The tiniest airways. Less than 1mm wide. NO cartilage to hold them open. They are held open only by the elastic recoil (pulling force) of surrounding lung tissue. In asthma, their muscle walls squeeze shut (bronchoconstriction).',
-    '<b>Alveoli (al-VEE-oh-lie) = air sacs:</b> Tiny balloon-like structures. 300 million in each lung. Where oxygen crosses into blood and carbon dioxide crosses back out (gas exchange).',
+    '<b>Trachea (TRAY-kee-ah) = windpipe:</b> Main central tube, 10-12cm long. Cartilage rings hold it open — it does not collapse. Tracheal stenosis causes fixed obstruction (stridor on BOTH breathing in AND out).',
+    '<b>Main bronchi:</b> Right and left. Right is wider and more vertical — foreign bodies go right more often.',
+    '<b>Bronchioles (BRON-kee-oles):</b> Smallest airways. No cartilage — held open only by elastic recoil of surrounding lung. In asthma: their muscular walls squeeze shut (bronchoconstriction). This is where salbutamol acts.',
+    '<b>Alveoli (al-VEE-oh-lie):</b> 300 million tiny air sacs. Where oxygen crosses into blood and CO2 crosses out.',
 ]:
     story.append(bp(f'• {pt}'))
-story.append(Spacer(1, 5))
+story.append(Spacer(1, 6))
 
-story.append(bp('<b>Key Concept — Upper vs Lower Airway Obstruction:</b>'))
 ul_table = [
-    ['Feature','Upper Airway Obstruction\n(Larynx and above)','Lower Airway Obstruction\n(Bronchi and below)'],
-    ['Sound produced','STRIDOR (STRY-dor) — harsh,\nhigh-pitched sound on BREATHING IN\n(inspiratory). Like a crowing or seal-bark sound.','WHEEZE — musical whistling sound\non BREATHING OUT (expiratory).\nCan also be inspiratory in severe asthma.'],
-    ['When heard','During INSPIRATION (breathing in) mainly','During EXPIRATION (breathing out) mainly'],
-    ['Conditions','Laryngospasm. VCD. Laryngeal oedema.\nAnaphylaxis. HAE. Epiglottitis. Croup.','Asthma. COPD. Allergic bronchitis.\nABPA. Eosinophilic bronchitis.'],
-    ['Response to salbutamol\n(bronchodilator)','NO — salbutamol only opens LOWER\nairways. Cannot open the larynx.','YES — salbutamol opens bronchioles.'],
-    ['Flow-volume loop\n(spirometry graph)','Variable extrathoracic obstruction:\nInspiratory limb is flat (cut off).','Variable intrathoracic obstruction:\nExpiratory limb shows concave shape.'],
+    ['Feature','UPPER Airway Obstruction\n(Larynx and above)','LOWER Airway Obstruction\n(Bronchi and bronchioles)'],
+    ['Sound','STRIDOR — harsh crowing noise.\nHeard on BREATHING IN\n(inspiratory).','WHEEZE — musical whistling.\nHeard on BREATHING OUT\n(expiratory).'],
+    ['Conditions','Laryngospasm. VCD/ILO.\nLaryngeal oedema.\nAnaphylaxis. HAE.\nEpiglottitis.','Asthma. COPD.\nAllergic / eosinophilic bronchitis.\nABPA.'],
+    ['Salbutamol effect','NO — salbutamol only acts on\nlower airway smooth muscle.\nCannot open the larynx.','YES — opens bronchioles.\nFEV1 improves > 12%\nafter salbutamol.'],
+    ['Flow-volume loop','FLAT INSPIRATORY LIMB\n(cut off at top).','Concave EXPIRATORY limb\n(scooped shape below normal).'],
 ]
-story.append(plain_table(ul_table,[CW*0.2,CW*0.4,CW*0.4]))
-
-info_box('<b>KEY CLINICAL POINT:</b> Stridor = upper airway. Wheeze = lower airway. They are DIFFERENT sounds in DIFFERENT places. A patient with VCD (vocal cord dysfunction) will make a STRIDOR sound — not a wheeze. Salbutamol will NOT help them. This is the most common reason VCD is misdiagnosed as asthma.', story)
-
-image_search_box('upper vs lower airway obstruction flow volume loop comparison', 'Radiopaedia.org or Google Images', story)
-memory_hook('STRIDOR = UPPER AIRWAY (larynx and above). WHEEZE = LOWER AIRWAY (bronchioles). Stridor is heard on BREATHING IN. Wheeze is heard on BREATHING OUT. Salbutamol only helps LOWER airway problems.', story)
+story.append(plain_table(ul_table,[CW*0.18,CW*0.41,CW*0.41]))
+info_box('<b>KEY CLINICAL POINT:</b> Stridor = upper airway. Wheeze = lower airway. They are different sounds in different places. A patient with VCD makes a STRIDOR — not a wheeze. Salbutamol will NOT help. This is the most common reason VCD is misdiagnosed as asthma for years.', story)
+image_search_box('flow volume loop VCD vs asthma inspiratory flattening comparison', 'Radiopaedia.org or Google Images', story)
+memory_hook('STRIDOR = UPPER AIRWAY (larynx and above) = breathing IN. WHEEZE = LOWER AIRWAY (bronchioles) = breathing OUT. Salbutamol only helps LOWER airway. Upper airway obstruction = refer ENT / laryngoscopy.', story)
 divider(story)
 
-# ── §3 ASTHMA — PATHOPHYSIOLOGY ───────────────────────────────────────────────
+# §3
 sec_header('Section 3: Asthma — Pathophysiology (How It Happens)', story)
-
-professor_says('Asthma is the most common cause of recurrent breathlessness in young people. Understanding the mechanism tells you exactly why each drug works. This is a favourite in MRCP Part 1.', story)
-
-story.append(bp('<b>What is Asthma? — Very Simple First:</b>'))
-story.append(bp('Asthma (AZ-mah) = a long-term condition of the airways. The airways are too sensitive. They overreact to things that would not bother a normal person.'))
-story.append(bp('Think of it like this: normal airways are like a calm river. In asthma, the airways are like a river that floods at the first sign of rain. A tiny trigger causes a massive overreaction.'))
-story.append(Spacer(1, 5))
+professor_says('Asthma is the most common cause of recurrent breathlessness in young people. Understanding the mechanism tells you exactly why each drug works. This is a frequent MRCP Part 1 question.', story)
 
 story.append(img_asthpath)
-story.append(bp('Normal airway vs asthmatic airway — three simultaneous problems', sImg))
+story.append(bp('Normal airway vs asthmatic airway — three simultaneous problems during every attack', sImg))
+story.append(Spacer(1, 8))
+
+story.append(bp('<b>Simple analogy first:</b>'))
+story.append(bp('A normal airway is like a wide motorway. Cars (air) flow freely. In asthma, the road suddenly: (1) gets narrowed by roadworks (bronchoconstriction), (2) the road surface swells up (inflammation), and (3) sticky mud covers part of the road (mucus). All three happen at once.'))
 story.append(Spacer(1, 5))
 
 story.append(bp('<b>Step 1: Sensitisation — The First Exposure</b>'))
-story.append(bp('The first time a person with a genetic tendency (atopy) breathes in an allergen (e.g. cat dander), their immune system overreacts.'))
-story.append(bp('The immune system makes <b>IgE antibodies</b> (a type of immune protein) that are specific to that allergen. These IgE antibodies attach to <b>mast cells</b> (fat-looking cells sitting in the airway lining). The mast cells are now primed — like a gun loaded and ready to fire.'))
-story.append(Spacer(1, 3))
-
-story.append(bp('<b>Step 2: The Allergic Reaction — The Second Exposure (Early Phase)</b>'))
-story.append(bp('The next time the person breathes in the same allergen, it binds to the IgE on the mast cells. This triggers the mast cell to EXPLODE — releasing chemicals.'))
-story.append(bp('The main chemicals released:'))
-for pt in [
-    '<b>Histamine</b> (HISS-tah-meen): Causes immediate bronchoconstriction (airway squeezes shut). Causes mucus production. Causes vasodilation.',
-    '<b>Leukotrienes</b> (loo-KOH-try-eenz): More powerful than histamine. Cause prolonged bronchoconstriction. Cause mucus production. Released over hours.',
-    '<b>Prostaglandins</b>: Cause airway inflammation and bronchoconstriction.',
-    '<b>Tryptase</b>: Enzyme released from mast cells. A blood test for tryptase confirms anaphylaxis.',
-]:
-    story.append(bp(f'  • {pt}'))
-story.append(bp('<b>Result:</b> Airways narrow (bronchoconstriction) within minutes. Peak at 15–30 minutes. This is the EARLY phase reaction.'))
-story.append(Spacer(1, 3))
-
-story.append(bp('<b>Step 3: The Late Phase — 4–8 Hours Later</b>'))
-story.append(bp('4–8 hours later, a second wave of inflammation arrives. Eosinophils (ee-OH-sin-oh-fills — a type of white blood cell) and T-lymphocytes invade the airway wall.'))
-story.append(bp('This is the LATE phase reaction. It causes: ongoing inflammation, thickening of the airway wall, continued airway narrowing.'))
-story.append(bp('The late phase is why steroids are important — steroids target this inflammation. Salbutamol only helps the early phase (bronchoconstriction). It does NOT help the late phase inflammation.'))
-story.append(Spacer(1, 3))
-
-story.append(bp('<b>Step 4: Airway Remodelling — Long-Term Changes</b>'))
-story.append(bp('If asthma is poorly controlled for years, permanent changes happen to the airway. This is called <b>remodelling</b>:'))
-for pt in [
-    'Smooth muscle in airway wall gets thicker and stronger (hypertrophy).',
-    'Subepithelial fibrosis (sub-ep-ith-EE-lee-al fy-BRO-sis) — scar tissue under the surface lining.',
-    'Blood vessel growth in the airway wall (angiogenesis).',
-    'Goblet cell hyperplasia — more mucus-producing cells.',
-    'These changes are IRREVERSIBLE. They cause persistent airflow limitation even between attacks.',
-]:
-    story.append(bp(f'  • {pt}'))
+story.append(bp('A person with a genetic tendency (atopy) breathes in an allergen. Their immune system makes <b>IgE antibodies</b> specific to that allergen. These IgE molecules attach to <b>mast cells</b> (large cells sitting in the airway lining). Mast cells are now primed — like a loaded gun.'))
 story.append(Spacer(1, 4))
 
-story.append(bp('<b>Three Core Problems in Every Asthma Attack:</b>'))
-three_problems = [
-    ['Problem','What Happens','Drug That Fixes It','Timing of Effect'],
-    ['1. BRONCHOCONSTRICTION\n(airway muscle squeezes)','Smooth muscle in\nbronchiole walls tightens.\nAirway diameter reduces.\nAir cannot flow.','Salbutamol (SABA)\nIpratropium (SAMA)\nMagnesium sulphate','Minutes.\nImmediate relief.'],
-    ['2. INFLAMMATION\n(wall swells, thickens)','Eosinophils, mast cells,\nT-cells infiltrate wall.\nWall becomes swollen\nand thickened.','Inhaled corticosteroids\n(ICS): budesonide,\nbeclometasone, fluticasone.\nOral/IV steroids.','Hours to days.\nNot immediate.'],
-    ['3. MUCUS HYPERSECRETION\n(plugs block airways)','Goblet cells over-produce\nthick sticky mucus.\nMucus plugs block\nsmaller airways.','Hydration. Nebulised\nbronchodilators loosen.\nPhysiotherapy.\nDNase in bronchiectasis.','Hours.\nNeeds clearance.'],
+story.append(bp('<b>Step 2: Early Phase Reaction (0-30 minutes)</b>'))
+story.append(bp('Next exposure to the same allergen triggers the mast cell to release stored chemicals immediately:'))
+for pt in [
+    '<b>Histamine:</b> Immediate bronchoconstriction + mucus production + vasodilation.',
+    '<b>Leukotrienes (LTC4, LTD4, LTE4):</b> More powerful than histamine. Sustained bronchoconstriction + mucus. Blocked by montelukast.',
+    '<b>Prostaglandins:</b> Airway inflammation and bronchoconstriction. Blocked by NSAIDs — BUT in Samter\'s triad, blocking COX makes more leukotrienes instead (see triggers).',
+    '<b>Tryptase:</b> Enzyme from mast cells. Blood test for tryptase confirms anaphylaxis when raised within 1-3 hours.',
+]:
+    story.append(bp(f'  • {pt}'))
+story.append(bp('<b>Peak at 15-30 minutes.</b> Salbutamol reverses the bronchoconstriction quickly.'))
+story.append(Spacer(1, 4))
+
+story.append(bp('<b>Step 3: Late Phase Reaction (4-8 hours later)</b>'))
+story.append(bp('A second wave: <b>eosinophils</b> (ee-OH-sin-oh-fills) and T-lymphocytes flood into the airway wall. This causes prolonged inflammation and thickening of the wall. This is why steroids are essential — they target this late inflammatory phase.'))
+story.append(Spacer(1, 4))
+
+story.append(bp('<b>Step 4: Airway Remodelling (years of poorly controlled asthma)</b>'))
+for pt in [
+    'Smooth muscle thickens and gets stronger (hypertrophy) — attacks become stronger.',
+    'Subepithelial fibrosis — scar tissue under the surface lining — partially irreversible.',
+    'More goblet cells (mucus-producers) — chronic mucus hypersecretion.',
+    'These changes cause persistent limitation even between attacks in severe disease.',
+]:
+    story.append(bp(f'  • {pt}'))
+story.append(Spacer(1, 6))
+
+three_prob = [
+    ['Problem','What Happens in Attack','Drug That Fixes It','Speed of Effect'],
+    ['1. BRONCHOCONSTRICTION\nAirway muscle squeezes shut','Smooth muscle tightens around\nbronchioles. Airway narrows.\nAir cannot flow in or out.','Salbutamol (SABA)\nIpratropium (SAMA)\nMagnesium sulphate (IV)','MINUTES.\nImmediate relief.\nSalbutamol peak: 15 min.'],
+    ['2. INFLAMMATION\nWall swells and thickens','Eosinophils and mast cells\ninvade wall. Wall becomes\nthickened and oedematous.','Inhaled corticosteroids (ICS)\nOral prednisolone\nIV hydrocortisone','HOURS TO DAYS.\nNot immediate.\nSteroids need time.'],
+    ['3. MUCUS HYPERSECRETION\nGoblet cells over-produce','Thick sticky mucus produced.\nPlugs block small airways.\nMucus harder to cough out.','Hydration + physiotherapy.\nNebulised bronchodilators\nhelp loosen mucus.','HOURS.\nNeeds active clearance.'],
 ]
-story.append(plain_table(three_problems,[CW*0.22,CW*0.26,CW*0.28,CW*0.24]))
-
-story.append(Spacer(1, 4))
-story.append(bp('<b>Why Does This Patient\'s Asthma Keep Coming Back?</b>'))
-story.append(bp('The steroids suppress the inflammation. The patient feels better. But if the TRIGGER is still present (e.g. cat at home, mould in the bedroom, occupational exposure), the inflammation returns as soon as the steroid effect wears off.'))
-story.append(bp('This is called <b>refractory</b> or <b>difficult-to-control asthma</b>. The question to ask is: <b>what is the ongoing trigger?</b>'))
-for pt in [
-    'Is there a pet at home (cat dander is the most common persistent allergen)?',
-    'Is there mould (damp house, bathroom, old books)?',
-    'Is she using NSAIDs or aspirin (can trigger asthma)?',
-    'Is she on a beta-blocker (can trigger asthma)?',
-    'Is there an occupational trigger (baker\'s flour, latex, isocyanates in spray paint)?',
-    'Is she using her inhalers correctly (poor technique = poor drug delivery)?',
-    'Is there a second diagnosis (VCD, HAE, ABPA) being missed?',
-]:
-    story.append(bp(f'  • {pt}'))
-
-memory_hook('ASTHMA MECHANISM: Allergen → IgE on Mast cells → Histamine + Leukotrienes + Prostaglandins → Bronchoconstriction (early) + Eosinophilic inflammation (late) + Mucus plugging. Salbutamol = bronchoconstriction. Steroids = inflammation. Both needed.', story)
-divider(story)
-
-# ── §4 CAUSES AND TRIGGERS ────────────────────────────────────────────────────
-sec_header('Section 4: Causes and Triggers of Asthma — Why Did This Happen?', story)
-
-professor_says('Asthma has a genetic component and an environmental trigger component. You need BOTH to develop asthma. Understanding triggers is clinically crucial — removing the trigger can cure the patient better than any drug.', story)
-
-story.append(bp('<b>Genetic Basis — Atopy (AT-oh-pee):</b>'))
-story.append(bp('Atopy means a tendency to develop allergic diseases. It is inherited (runs in families). Atopic people make too much IgE in response to allergens.'))
-story.append(bp('The atopic triad: <b>Asthma + Allergic rhinitis (hayfever) + Atopic dermatitis (eczema)</b>. If a patient has one, ask about the others.'))
-story.append(bp('Genes involved: IL-4, IL-5, IL-13 pathway genes. HLA-DQB1 gene. Filaggrin gene (also causes eczema).'))
+story.append(plain_table(three_prob,[CW*0.24,CW*0.26,CW*0.25,CW*0.25]))
 story.append(Spacer(1, 5))
 
-story.append(bp('<b>Common Asthma Triggers — Detailed:</b>'))
-triggers_table = [
-    ['Trigger Category','Specific Triggers','Why They Trigger Asthma','Clinical Importance'],
-    ['ALLERGENS\n(most important)','Cat dander (most potent).\nHouse dust mite (Dermatophagoides).\nDog dander. Cockroach.\nTree pollen. Grass pollen.\nMould (Aspergillus, Alternaria).','IgE-mediated mast cell\ndegranulation → histamine\n+ leukotrienes → bronchoconstriction.','Ask about pets at home.\nBedding type (feather vs\nsynthetic). Damp walls (mould).\nSkin prick test identifies allergen.'],
-    ['RESPIRATORY\nINFECTIONS','Rhinovirus (most common).\nInfluenza. RSV.\nMycoplasma. Chlamydophila.\nSinusitis (chronic).','Viruses trigger airway\ninflammation directly.\nBacterial toxins irritate.\nPost-infectious hyperresponsiveness\ncan last weeks.','Most common trigger for\nacute exacerbations.\nVaccinate: annual flu vaccine\nfor all asthma patients.\nAntibiotics only if bacterial.'],
-    ['DRUGS','NSAIDs (aspirin, ibuprofen,\ndiclofenac — ANY NSAID).\nBeta-blockers (atenolol,\npropranolol — even eye drops).\nACE inhibitors (cause cough).','NSAIDs: block COX-1 → shunt\narachidonic acid to leukotriene\npathway → massive leukotriene\nrelease → severe bronchoconstriction.\nBeta-blockers: block beta-2\nreceptors → bronchoconstriction.','ASPIRIN-EXACERBATED\nRESPIRATORY DISEASE (AERD)\n= Samter\'s triad: Asthma +\nNasal polyps + NSAID sensitivity.\nNever give NSAIDs or beta-blockers\nto asthma patients without consideration.'],
-    ['OCCUPATIONAL\nEXPOSURE','Flour dust (bakers).\nIsocyanates (spray painters).\nLatex (healthcare workers).\nColophony (solderers).\nAnimal proteins (vets, farmers).','Occupational sensitisation:\nboth IgE-mediated and\nnon-IgE-mediated mechanisms.\nSymptomatic only at work.\nBetter on weekends/holidays.','Occupational asthma accounts\nfor 10–15% of adult asthma.\nKey question: "Are symptoms\nbetter on holidays?"\nRemoval from exposure = cure.'],
-    ['PHYSICAL FACTORS','Exercise (running, cold air\nbreathing during exercise).\nCold dry air (winter).\nFog and mist.','Rapid breathing through mouth\nin exercise bypasses nasal\nwarming/humidification.\nCold dry air causes osmotic\nchange in airway lining cells.','Exercise-induced bronchoconstriction:\nSalbutamol 15 min before exercise.\nMontelukast (leukotriene antagonist)\nvery effective prophylaxis.'],
-    ['EMOTIONAL /\nPSYCHOLOGICAL','Stress. Anxiety.\nLaughter. Crying.\nHyperventilation.','Emotional states alter\nbreathing pattern.\nHyperventilation dries airways.\nPsychological factors also\nmodify symptom perception.','Anxiety can mimic asthma\nAND worsen real asthma.\nVCD (vocal cord dysfunction)\nstrongly linked to anxiety.\nImportant: exclude VCD.'],
-    ['HORMONAL','Premenstrual asthma\n(perimenstrual period).\nPregnancy. Thyroid disease.','Oestrogen and progesterone\nfluctuations alter airway\nresponsiveness.\nPregnanolone (progesterone\nmetabolite) is a bronchodilator.','Some women have severe\nasthma in the days before\nperiod. Leukotriene antagonists\n(montelukast) and GnRH\nanalogue therapy can help.'],
-    ['GASTRO-OESOPHAGEAL\nREFLUX (GERD)','Acid reflux from stomach\ninto oesophagus and\npossibly larynx.','Vagal reflex: acid in the\noesophagus triggers vagus\nnerve → bronchoconstriction\n(even without aspiration).\nMicro-aspiration: acid\ndamages airway lining.','Often silent (no heartburn).\nTest: 24-hour pH monitoring.\nTreatment: PPI + lifestyle.\nGERD accounts for 10%\nof difficult asthma.'],
-]
-story.append(plain_table(triggers_table,[CW*0.16,CW*0.22,CW*0.32,CW*0.3]))
-
-info_box('<b>Samter\'s Triad (AERD — Aspirin-Exacerbated Respiratory Disease):</b> Three things together: (1) Asthma. (2) Nasal polyps (growths in the nose causing blockage). (3) Sensitivity to NSAIDs (aspirin, ibuprofen). Mechanism: NSAIDs block COX-1 enzyme → arachidonic acid is shunted into leukotriene pathway → huge leukotriene surge → severe bronchoconstriction. Treatment: avoid ALL NSAIDs. Use paracetamol for pain. Montelukast (leukotriene receptor blocker) is key treatment. Aspirin desensitisation possible in specialist centres.', story)
-
-memory_hook('ASTHMA TRIGGERS: Allergens (cat most potent). Viral URTI (rhinovirus most common). NSAIDs + Beta-blockers (NEVER give to asthmatics). Occupational (better on holidays = occupational asthma). Exercise (salbutamol before). GERD (silent acid reflux). Premenstrual. Mould. Stress.', story)
+info_box('<b>Why does this patient keep relapsing?</b> Steroids clear the inflammation — she feels better. But if the TRIGGER remains (cat at home, damp walls, mould, NSAIDs, occupational exposure), inflammation returns as steroids wear off. Ask: pet at home? Mould in bedroom? Taking NSAIDs or aspirin? On beta-blocker? Using inhaler correctly? Is there a second diagnosis (VCD, ABPA, HAE) being missed?', story)
+memory_hook('ASTHMA MECHANISM: Allergen → IgE + Mast cells → Histamine + Leukotrienes → Bronchoconstriction (early, salbutamol) + Eosinophilic inflammation (late, steroids) + Mucus plugging. All three happen simultaneously. Salbutamol reverses constriction. Steroids reduce inflammation. Both needed together.', story)
 divider(story)
 
-# ── §5 CLINICAL FEATURES ──────────────────────────────────────────────────────
-sec_header('Section 5: Clinical Features — What Does Asthma Look Like?', story)
+# §4
+sec_header('Section 4: Causes and Triggers of Asthma', story)
+professor_says('Knowing triggers is clinically crucial. Removing the trigger can cure the patient better than any drug. Always ask about every trigger category.', story)
 
-professor_says('The clinical presentation of asthma is so characteristic that you can often diagnose it from the history alone. The key words are: episodic, variable, reversible, and worse at night or early morning.', story)
+story.append(bp('<b>Atopy (AT-oh-pee) — The Genetic Foundation:</b>'))
+story.append(bp('Atopy = inherited tendency to make too much IgE against allergens. The atopic triad: <b>Asthma + Allergic rhinitis (hayfever) + Atopic eczema</b>. If a patient has one, always ask about the other two.'))
+story.append(Spacer(1, 6))
 
-story.append(bp('<b>The Classic Asthma History:</b>'))
+triggers_table = [
+    ['Trigger Category','Specific Examples','Mechanism','Clinical Importance'],
+    ['ALLERGENS\n(most important)','Cat dander (most potent).\nHouse dust mite.\nDog. Cockroach.\nGrass / tree pollen.\nAspergillus / Alternaria mould.','IgE on mast cells → mast cell\ndegranulation → histamine\n+ leukotrienes.','Skin prick test or\nspecific IgE (RAST) identifies\nthe culprit allergen.\nAllergen avoidance is curative.'],
+    ['RESPIRATORY\nINFECTIONS','Rhinovirus (most common).\nInfluenza. RSV.\nMycoplasma. Sinusitis.','Viruses cause direct\nairway inflammation +\npost-infectious hyperresponsiveness\nlasting weeks.','Most common trigger for\nexacerbations. Annual flu vaccine\nfor ALL asthma patients.\nAntibiotics only if bacterial.'],
+    ['DRUGS\n(NEVER give these)','NSAIDs: aspirin, ibuprofen,\ndiclofenac — ANY NSAID.\nBeta-blockers: even eye drops.\nACE inhibitors: cause cough\n(not bronchoconstriction).','NSAIDs: block COX-1 →\nleukotrienes surge → severe\nbronchoconstriction.\nBeta-blockers: block beta-2\nreceptors → bronchoconstriction.','Samter\'s Triad: Asthma +\nNasal polyps + NSAID sensitivity.\nNEVER prescribe NSAIDs or\nbeta-blockers to asthmatics\nwithout very careful consideration.'],
+    ['OCCUPATIONAL\nEXPOSURE','Isocyanates (spray painters).\nFlour dust (bakers).\nLatex (healthcare workers).\nColophony (solderers).\nAnimal proteins (vets, farmers).','IgE-mediated sensitisation\nOR direct airway irritation.\nSymptoms only at work.','KEY QUESTION: "Better on\nholidays and weekends?"\nYES = occupational asthma.\nRemoval from exposure = cure.'],
+    ['PHYSICAL TRIGGERS','Exercise (running, cold air).\nCold dry air (winter).\nFog and mist.','Cold dry air bypasses nasal\nhumidification. Osmotic change\nin airway cells → mast cell\nactivation.','Salbutamol 400mcg\n15 min BEFORE exercise.\nMontelukast excellent for\nexercise-induced prevention.'],
+    ['GERD\n(Acid reflux)','Stomach acid refluxing up\nto the oesophagus and larynx.\nOften NO heartburn (silent).','Vagal reflex: acid in\noesophagus triggers vagus nerve\n→ bronchoconstriction.\nMicro-aspiration damages airway.','24h pH monitoring confirms.\nPPI treatment can improve\nasthma control significantly.\nTest: empirical PPI trial.'],
+    ['HORMONAL','Premenstrual asthma.\nPregnancy. Thyroid disease.','Oestrogen and progesterone\nfluctuations alter airway\nresponsiveness.','Ask: do attacks link to\nyour menstrual cycle?\nMontelukast helpful.\nGnRH analogue in specialist care.'],
+]
+story.append(plain_table(triggers_table,[CW*0.16,CW*0.22,CW*0.3,CW*0.32]))
+info_box('<b>Samter\'s Triad (AERD — Aspirin-Exacerbated Respiratory Disease):</b> Three things together: (1) Asthma. (2) Nasal polyps. (3) NSAID sensitivity. NSAIDs block COX-1 → arachidonic acid shunted into leukotriene pathway → massive leukotriene surge → severe bronchoconstriction within 30-120 minutes. Treatment: avoid ALL NSAIDs. Paracetamol is safe. Montelukast is key preventive drug. Aspirin desensitisation possible in specialist centres.', story)
+memory_hook('ASTHMA TRIGGERS: Cat (most potent allergen). Rhinovirus URTI (most common exacerbation trigger). NSAIDs + Beta-blockers = NEVER give (contraindicated). Occupational = better on holidays. Exercise = salbutamol before. GERD = silent reflux. Premenstrual = montelukast. Mould / dust mite at home.', story)
+divider(story)
+
+# §5
+sec_header('Section 5: Clinical Features — History and Examination', story)
+professor_says('Asthma is diagnosed largely from the HISTORY. The key words are: episodic, variable, reversible, worse at night, and improved by bronchodilator. Know these — they come up in MRCP Part 1 and PACES every year.', story)
+
+story.append(bp('<b>Classic Asthma History — The Key Features:</b>'))
 for pt in [
-    '<b>Episodic:</b> Attacks come and go. Between attacks the patient may be completely normal. This is crucial — a patient who is ALWAYS breathless does not have classic asthma (may have COPD or fixed obstruction).',
-    '<b>The triad of symptoms:</b> (1) Wheeze (WEE-ze — a musical whistling sound). (2) Breathlessness (difficulty breathing). (3) Cough (often dry, worse at night). All three together = classic asthma.',
-    '<b>Cough variant asthma:</b> Some patients have ONLY cough — no wheeze, no breathlessness. The cough is typically dry, irritating, worse at night and early morning. This patient sometimes has cough only — this fits.',
-    '<b>Nocturnal pattern:</b> Symptoms worse at night (2–4am) and early morning. This is because cortisol (natural steroid) is lowest at night. Airways are naturally narrowest at 4am (circadian rhythm).',
-    '<b>Trigger identification:</b> Ask specifically about cats, dogs, dusty rooms, exercise, cold air, perfumes, smoke, certain drugs.',
-    '<b>Variable symptoms:</b> Some days fine, some days bad. Varies with allergen exposure and triggers. This variability is a diagnostic hallmark.',
-    '<b>Childhood history:</b> Often starts in childhood. Many children seem to "grow out of it" — but it can return in adulthood, especially in women (hormonal triggers).',
-    '<b>Family history:</b> 60–70% of asthma patients have a family member with asthma, hayfever, or eczema.',
-    '<b>Personal atopic history:</b> Hayfever (runny, itchy nose in pollen season). Eczema (dry itchy patches of skin in childhood). Allergic conjunctivitis (itchy red eyes).',
+    '<b>Episodic:</b> Attacks come and go. Between attacks patient is completely normal. ALWAYS breathless = not classic asthma (think fixed obstruction, COPD).',
+    '<b>The triad:</b> (1) WHEEZE — musical whistling on breathing out. (2) BREATHLESSNESS. (3) DRY COUGH — often worst at night and early morning.',
+    '<b>Cough variant asthma:</b> Cough only — no wheeze, no breathlessness. Dry, irritating, nocturnal. This patient sometimes has cough only — this fits.',
+    '<b>Nocturnal and early morning:</b> Cortisol (natural steroid) lowest at night. Airways narrowest at 4am (circadian rhythm). Classic asthma timing.',
+    '<b>Trigger identification:</b> Ask specifically about cats, dogs, dusty rooms, exercise, cold air, perfume, smoke, NSAIDs, beta-blockers.',
+    '<b>Variability:</b> Some days fine, some days bad. Varies with allergen exposure. This variability is a diagnostic hallmark.',
+    '<b>Atopic history:</b> Hayfever, eczema, food allergies, previous anaphylaxis.',
+    '<b>Family history:</b> 60-70% have a family member with asthma, hayfever, or eczema.',
 ]:
     story.append(bp(f'• {pt}'))
-story.append(Spacer(1, 5))
-
-story.append(bp('<b>Examination — What You Find in an Asthma Attack:</b>'))
-exam_table = [
-    ['Sign','What You See/Hear','Meaning','Severity Indicator'],
-    ['Respiratory Rate','Increased: 20–30/min.\nVery fast >30 = severe.','Body working harder\nto breathe. Airways\nnarrowed.','Rate >25 = acute severe.\nRate >30 = life-threatening.'],
-    ['Use of accessory\nmuscles','Sternocleidomastoid\n(neck muscles) visible\nwhen breathing.\nIntercostal recession\n(ribs pull in).','Normal breathing uses\nonly the diaphragm.\nAccessory muscles used\nwhen very breathless.','Severe attack sign.'],
-    ['Position','Sitting upright.\nLeaning forward on\nhands (tripod position).','Maximises lung volume.\nPatient instinctively\nfinds best position.','Cannot lie flat = severe.'],
-    ['Speech','Short sentences only.\nOr single words only.\nOr cannot speak.','Cannot speak full\nsentences = uses all\nbreath just to breathe.','Cannot speak full\nsentence = acute severe.\nSingle words = life-threatening.'],
-    ['Pulse / Heart Rate','Tachycardia >110 bpm.\n(Also: salbutamol\nitself causes tachycardia)','Body compensating.\nHypoxia drives tachycardia.','HR >110 = acute severe.\nBradycardia in VERY\nsevere = pre-arrest.'],
-    ['Wheeze','Expiratory wheeze\nheard all over chest.\nBoth sides.','Air forced through\nnarrowed bronchioles\ncreates wheeze.','SILENT CHEST = NO wheeze\n= life-threatening.\n(No air moving = cannot\nmake wheeze sound.)'],
-    ['Percussion','Hyper-resonant\n(more hollow than normal)\nor normal.','Hyperinflation —\nair trapped behind\nobstructed airways.','Bilateral in asthma.\n(Unilateral dullness =\npneumothorax/pneumonia).'],
-    ['Peak Flow\n(PEFR)','Reduced from patient\'s\npersonal best.\nUse portable peak\nflow meter.','Best objective measure\nof airway obstruction\nin the ward setting.','See severity table above.\n<50% = severe.\n<33% = life-threatening.'],
-    ['Oxygen Saturation','SpO2 may be low\n(<92%) in severe attack.','Mismatch between\nventilated and perfused\nareas of lung.','SpO2 <92% on air =\nlife-threatening or\nneeds ICU consideration.'],
-    ['Pulsus Paradoxus','BP drops >10 mmHg\nduring inspiration.\n(Measure: systolic BP\nduring breathing).','Marked airway obstruction\ncauses large swings\nin intrathoracic pressure.','If present = severe attack.\nAsk for manual sphygmo\nif suspected.'],
-]
-story.append(plain_table(exam_table,[CW*0.16,CW*0.22,CW*0.3,CW*0.32]))
-story.append(Spacer(1, 5))
+story.append(Spacer(1, 6))
 
 story.append(img_severity)
-story.append(bp('Acute asthma severity classification — BTS/SIGN guidelines', sImg))
-story.append(Spacer(1, 4))
-
-alert_box('SILENT CHEST = LIFE-THREATENING ASTHMA. No wheeze does NOT mean improving asthma. It means the airways are so tight that NO AIR IS MOVING. This is a pre-arrest state. Immediate senior help + ITU referral + IV magnesium + consider intubation.', story)
-
-alert_box('LIFE-THREATENING FEATURES: SpO2 <92%. PEFR <33% predicted. Silent chest. Cyanosis. Bradycardia. Hypotension. Exhaustion. Confusion. These patients may need ICU. Do NOT leave them alone.', story)
-
-memory_hook('ASTHMA EXAM: Wheeze + tachycardia + accessory muscles + cannot complete sentences = ACUTE SEVERE. Silent chest + SpO2 <92% + confusion/bradycardia = LIFE-THREATENING = call for help NOW. PEFR: 50-75% = moderate. 33-50% = severe. <33% = life-threatening.', story)
-divider(story)
-
-# ── §6 INVESTIGATIONS ─────────────────────────────────────────────────────────
-sec_header('Section 6: Investigations — How Do We Confirm the Diagnosis?', story)
-
-professor_says('Asthma is a clinical diagnosis confirmed by objective tests. But investigations also help identify the trigger, assess severity, and rule out other diagnoses. Know every test and what it means.', story)
-
-story.append(bp('<b>Lung Function Tests — The Most Important Tests in Asthma:</b>'))
-story.append(Spacer(1, 3))
-
-lung_tests = [
-    ['Test','What It Measures','Normal vs Asthma','How to Interpret'],
-    ['Spirometry\n(SPY-rom-et-ree)','Patient blows hard and fast into a machine.\nMeasures:\nFEV1 = Volume blown in 1 second.\nFVC = Total volume blown out.\nFEV1/FVC ratio.','Normal FEV1/FVC > 70%.\nObstructive pattern: FEV1/FVC < 70%.\nFEV1 reduced.\nFVC normal or slightly reduced.','In asthma between attacks:\nMay be NORMAL.\nIn attack: obstruction pattern.\nKey: REVERSIBILITY TEST confirms asthma.'],
-    ['Bronchodilator\nReversibility Test','Give salbutamol 400mcg inhaled.\nRepeat spirometry 15 minutes later.','POSITIVE = significant asthma:\nFEV1 improves by > 12% AND\n> 200ml from baseline.\nOR PEFR improves > 20%.','Positive reversibility = confirms\nreversible airflow obstruction = asthma.\nIrreversible obstruction despite\nbronchodilator = consider COPD or\nfixed obstruction.'],
-    ['Peak Expiratory\nFlow Rate (PEFR)','Patient blows hard into a small\nhandheld meter. Measures the\nPEAK speed of exhalation.\nRecorded in litres/minute.','Compare to personal best or\npredicted (based on age/height/sex).\nNormal >80% predicted.\nIn asthma: reduced during attack.','Peak flow diary: measure morning\nand evening for 2–4 weeks.\nVariability > 20% between morning\nand evening = strong evidence\nof asthma. Key monitoring tool.'],
-    ['Bronchial\nProvocation Test\n(methacholine or\nhistamine challenge)','Give increasing doses of methacholine\nor histamine (things that make\nairways tighten). Measure FEV1.','Positive = FEV1 drops >20%\nat low concentration (PC20 < 8mg/ml).\nNegative = airways do not react.','Used when spirometry and PEFR\nnormal but symptoms suggest asthma.\nHigh sensitivity — good to EXCLUDE asthma\nif negative. Performed in specialist lung lab.'],
-    ['FeNO\n(Fractional exhaled\nNitric Oxide)','Patient breathes into a machine.\nMeasures nitric oxide in exhaled breath.\nNO is produced by inflamed airway cells.','Normal < 25 ppb.\nRaised (> 40 ppb) = eosinophilic\nairway inflammation = allergic asthma.','High FeNO = responds well to\ninhaled steroids.\nLow FeNO in a symptomatic patient\n= consider non-eosinophilic asthma\nor alternative diagnosis (VCD).'],
-    ['Flow-Volume Loop\n(part of spirometry)','Graph showing flow rate vs volume\nduring both forced inhalation\nand exhalation.','Normal: smooth curved shape.\nAsthma (lower airway): concave\n(scooped) expiratory limb.\nUpper airway obstruction: flat\ninspiratory limb.','KEY for diagnosing VCD:\nVCD shows flat inspiratory limb\n(upper airway cuts off flow during\nbreathing in). Normal expiratory limb.'],
-]
-story.append(plain_table(lung_tests,[CW*0.16,CW*0.28,CW*0.28,CW*0.28]))
+story.append(bp('Acute asthma severity — BTS/SIGN classification with key parameters', sImg))
 story.append(Spacer(1, 6))
 
-story.append(bp('<b>Blood Tests in Asthma:</b>'))
-blood_table = [
-    ['Test','Result in Asthma','Significance'],
-    ['Full Blood Count (FBC)','Eosinophilia: eosinophils > 0.3 x10^9/L\n(often > 1.0 in severe allergic asthma).','Eosinophils are key inflammatory cells in asthma.\nHigh eosinophils = allergic/eosinophilic asthma.\nResponds well to inhaled steroids and biologics.'],
-    ['Total IgE\n(Immunoglobulin E)','Raised (> 100 IU/mL in allergic asthma,\noften > 1000 in ABPA).','Marker of atopic sensitisation. High IgE\n= candidate for omalizumab (anti-IgE biologic).\nVery high IgE (> 1000) = consider ABPA.'],
-    ['Specific IgE (RAST test)\nor Skin Prick Test','Specific IgE to cat, dog, house dust mite,\npollens, moulds — identifies exact allergen.','Guides allergen avoidance advice.\nIdentifies trigger for targeted treatment\n(immunotherapy / desensitisation).'],
-    ['Aspergillus IgE and\nAspergillus Precipitins','High in ABPA (Allergic Bronchopulmonary\nAspergillosis). Normal in simple asthma.','Raised Aspergillus-specific IgE +\nraised total IgE = ABPA until proven otherwise.'],
-    ['C4 level and\nC1-esterase inhibitor\n(C1-INH) level + function','C4 low in HAE (Hereditary Angioedema).\nC1-INH low in HAE type 1 (80% of cases).','C4 is the BEST SCREENING TEST for HAE.\nAlways check C4 in recurrent laryngeal\nswelling/angioedema WITHOUT urticaria.'],
-    ['Tryptase (serum)','Raised (> 11.4 mcg/L) in anaphylaxis.\nPeak at 30–90 minutes after reaction.','Confirms anaphylaxis. Must be taken within\n1–3 hours of attack. Normal tryptase does\nnot exclude anaphylaxis.'],
-    ['Blood Glucose','May be raised after steroid treatment.','Monitor. Prednisolone raises blood sugar.\nImportant in diabetic patients.'],
-    ['Arterial Blood Gas\n(ABG) in severe attack','Early: LOW PaCO2 (hyperventilating).\nLate: NORMAL or HIGH PaCO2 = DANGER.\nLow PaO2 in severe attack.','NORMAL or HIGH PaCO2 in a\nbreathing-hard asthma patient =\nTIRING = impending respiratory failure.\nThis is a sign for ICU.'],
+exam_table = [
+    ['Sign Found','What You See','What It Means','Severity Indicator'],
+    ['Respiratory Rate','Increased: 20-30/min.\nVery fast >30 = serious.','Body working hard to breathe.\nAirways narrowed.','Rate >= 25 = acute severe.'],
+    ['Accessory Muscles','Neck muscles (sternocleidomastoid)\nvisible when breathing.\nIntercostal recession.','Normal breathing = diaphragm only.\nAccessory muscles = very breathless.','Severe attack sign.'],
+    ['Position','Sitting upright.\nTripod position (leaning forward).','Maximises lung volume.\nPatient instinctively finds best position.','Cannot lie flat = severe.'],
+    ['Speech','Short sentences. Single words.\nOr cannot speak at all.','Uses all breath just to breathe.','Single words = life-threatening.'],
+    ['Wheeze','Bilateral expiratory wheeze.\nPolyphonic (many pitches).','Air forced through narrowed bronchioles.\nPolyphonic = diffuse small airway disease.','SILENT CHEST = life-threatening.\n(No air moving = no wheeze.)'],
+    ['Heart Rate','Tachycardia > 110 bpm.\nNote: salbutamol also causes tachycardia.','Hypoxia + compensation.\nSalbutamol beta-1 side effect.','HR >= 110 = acute severe.\nBradycardia = pre-arrest.'],
+    ['PEFR\n(Peak Flow)','Reduced from personal best.\nMeasure with handheld meter.','Best objective bedside measure\nof airway obstruction.','< 50% = severe.\n< 33% = life-threatening.'],
+    ['SpO2\n(Oxygen saturation)','May be low (< 92%)\nin severe attack.','V/Q mismatch — some areas\nventilated but not perfused.','< 92% on air = life-threatening.'],
 ]
-story.append(plain_table(blood_table,[CW*0.24,CW*0.38,CW*0.38]))
+story.append(plain_table(exam_table,[CW*0.17,CW*0.25,CW*0.33,CW*0.25]))
+alert_box('SILENT CHEST = LIFE-THREATENING ASTHMA. No wheeze does NOT mean improving. It means airways are so blocked that NO AIR IS MOVING. This is a pre-arrest state. Call for immediate senior help + ICU + IV magnesium sulphate now.', story)
+alert_box('LIFE-THREATENING FEATURES — any ONE of these: SpO2 < 92% | PEFR < 33% | Silent chest | Cyanosis | Bradycardia | Exhaustion | Confusion | Arrhythmia | Normal or HIGH PaCO2.', story)
+memory_hook('ASTHMA EXAM: Wheeze + tachycardia + accessory muscles + cannot complete sentences = ACUTE SEVERE. Silent chest + SpO2 <92% + confusion/bradycardia = LIFE-THREATENING = call ICU immediately. PEFR: 50-75% = moderate. 33-50% = severe. <33% = life-threatening.', story)
+divider(story)
+
+# §6 Investigations
+sec_header('Section 6: Investigations — How We Confirm the Diagnosis', story)
+professor_says('The diagnosis of asthma is CLINICAL — based on history and examination. Investigations confirm it, assess severity, exclude other diagnoses, and guide treatment. Know which test proves what.', story)
+
+story.append(bp('<b>Spirometry (Lung Function Tests) — The Gold Standard:</b>'))
+for pt in [
+    '<b>FEV1:</b> Forced Expiratory Volume in 1 second. How much air blown out in first second. Low in asthma (obstruction).',
+    '<b>FVC:</b> Forced Vital Capacity. Total air blown out completely. Usually normal or mildly reduced.',
+    '<b>FEV1/FVC ratio:</b> Normal is > 0.7 (or 70%). In asthma (obstruction) < 0.7. Key MRCP number.',
+    '<b>Reversibility test:</b> Give salbutamol 400mcg. Repeat spirometry 15 minutes later. If FEV1 improves by > 12% AND > 200mL = REVERSIBLE OBSTRUCTION = confirms asthma.',
+    '<b>Variability:</b> PEFR varies > 20% over the day (morning vs evening). Diurnal variation > 20% = diagnostic of asthma.',
+]:
+    story.append(bp(f'  • {pt}'))
+story.append(Spacer(1, 5))
+
+invx_table = [
+    ['Investigation','What It Measures','Asthma Finding','Why It Matters'],
+    ['Spirometry + reversibility\n(FEV1, FVC, FEV1/FVC)','Airflow obstruction and\nreversibility after SABA.','Obstructive pattern:\nFEV1/FVC < 0.7.\n> 12% + > 200mL improvement\nafter salbutamol.','Confirms diagnosis.\nMRCP Part 1 essential.\nAlso distinguishes from COPD\n(poor reversibility in COPD).'],
+    ['Peak Expiratory Flow\nRate (PEFR)','Maximum speed of breathing out.\nUsing hand-held meter.','Diurnal variation > 20%.\nReduced in attacks.\nCompare to personal best.','Cheap, bedside, monitor response.\nPatient does at home\n(asthma diary). Gold for monitoring.'],
+    ['Fractional exhaled nitric\noxide (FeNO)','Eosinophilic airway inflammation.\nBiomarker of T2 inflammation.','> 40 ppb = significant\neosinophilic inflammation.\nConfirms atopic / eosinophilic\nasthma.','Predicts steroid response.\nGuides biologic therapy choices.\n> 25 = consider ICS. > 50 = very\nlikely to respond to ICS/biologics.'],
+    ['Blood tests:\nEosinophil count,\nTotal IgE, Specific IgE','Atopy and eosinophilic\ninflammation markers.','Eosinophils > 0.3 x10^9/L\n= eosinophilic asthma.\nHigh IgE = atopic.\nSpecific IgE to allergen (RAST).','Guides biologic choice.\nMepolizumab/benralizumab needs\neosinophils > 0.3.\nOmalizumab needs high IgE.'],
+    ['CXR (Chest X-ray)\n(in acute attack)','Look for: hyperinflation,\npneumothorax, consolidation,\nforeign body.','Usually NORMAL in asthma.\nMay see hyperinflation\n(flattened diaphragm).','To exclude: pneumothorax (tension).\npneumonia, foreign body.\nCXR CANNOT diagnose asthma.'],
+    ['ABG (Arterial Blood Gas)\nin severe attack','PaO2, PaCO2, pH.\nOxygenation + ventilation.','Type 1 RF: low PaO2.\nInitially low PaCO2 (hyperventilating).\nNormal or high PaCO2 = DANGER\n= patient tiring = needs ITU.','PaCO2 rising in severe attack =\nrespiratory failure approaching.\nThis is a RED FLAG.\nCall ITU if PaCO2 > 4.5 in severe.'],
+    ['Serum tryptase\n(within 1-3 hours)','Mast cell degranulation.\nReleased in anaphylaxis.','Raised > 11.4 mcg/L = anaphylaxis.\nNormal in asthma.','Distinguishes anaphylaxis from\nasthma. Repeat at 24h (baseline).\nHelps if patient recovering after\nepinephrine and uncertain cause.'],
+    ['Skin prick tests\nor RAST (specific IgE)','IgE sensitisation to specific\nallergens (cat, HDM, grass etc).','Positive wheal-and-flare = IgE\nagainst that allergen.','Identifies specific trigger.\nGuides avoidance advice.\nNeeded before allergen\nimmunotherapy (desensitisation).'],
+]
+story.append(plain_table(invx_table, [CW*0.2, CW*0.22, CW*0.26, CW*0.32]))
+info_box('<b>MRCP KEY FACT on ABG:</b> In an asthma attack, the patient hyperventilates → blows off CO2 → PaCO2 is LOW (< 4.5 kPa). If PaCO2 is NORMAL (4.5-6) or HIGH (> 6) during severe asthma, this means the patient is TIRING and can no longer hyperventilate. This is called "Type 2 respiratory failure" and signals impending respiratory arrest. Call ITU immediately. This is a favourite MRCP question.', story)
+memory_hook('KEY INVESTIGATIONS: Spirometry FEV1/FVC < 0.7 + > 12% reversibility = confirms asthma. FeNO > 40 ppb = eosinophilic inflammation = steroid response. ABG in severe: LOW PaCO2 (hyperventilating) = compensating. NORMAL or HIGH PaCO2 = TIRING = ITU. PEFR variation > 20% = diagnostic. Tryptase raised only in anaphylaxis, not pure asthma.', story)
+divider(story)
+
+# §7 Management
+sec_header('Section 7: Management — How We Treat Asthma', story)
+professor_says('Management has two parts: ACUTE attack (emergency) and CHRONIC long-term. Know both. Know the BTS stepwise ladder perfectly — it comes up every year in MRCP.', story)
+
+story.append(bp('<b>Part A: ACUTE SEVERE ASTHMA — Emergency Management:</b>'))
+story.append(bp('This is a medical emergency. Act fast. Remember SHAM-O: Salbutamol + Hydrocortisone + Airway (oxygen) + Magnesium + Other (ipratropium + consider ITU).'))
+story.append(Spacer(1, 5))
+
+acute_mgmt = [
+    ['Priority','Treatment','Dose + Route','Notes'],
+    ['1. OXYGEN\n(first and always)','High-flow oxygen.\nTarget SpO2 94-98%.','15L via non-rebreather mask\ninitially. Titrate down.','Asthma patients are NOT CO2-retainers (that is COPD). Give high-flow O2 freely in acute attack.'],
+    ['2. SALBUTAMOL\n(first-line bronchodilator)','Beta-2 agonist. Relaxes\nbronchial smooth muscle.\nFast. Effective.','2.5mg nebulised every 20-30\nminutes. Continuous if needed.\nOr 4-8 puffs via spacer if mild.','Causes tachycardia + tremor\n(beta-1 spillover). Repeat every\n20-30 mins. IV if nebuliser fails.'],
+    ['3. IPRATROPIUM\n(add if moderate-severe)','Anticholinergic. Blocks\nvagal bronchoconstriction.\nAdds to salbutamol.','0.5mg (500mcg) nebulised\nevery 4-6 hours.\nCombine with salbutamol neb.','Not as potent as salbutamol\nbut additive effect. Continue for\nfirst 24-48h in severe attack.'],
+    ['4. STEROIDS\n(essential — start ASAP)','Reduce eosinophilic inflammation.\nReduce airway swelling.\nPrevent late-phase reaction.','Oral prednisolone 40-50mg/day\nOR IV hydrocortisone 100mg QDS\nif cannot swallow. 5-7 day course.','NOT immediate effect — takes\n4-6 hours. Start within first\n30 minutes. Prevents relapse.\nTaper not needed for short courses.'],
+    ['5. IV MAGNESIUM\n(add in severe/life-threatening)','Bronchodilator (blocks\ncalcium in smooth muscle).\nUsed if not responding.','2g IV over 20 minutes.\nSingle dose.','MRCP favourite! Give for\nlife-threatening OR severe\nnot responding after 1 hour.\nNo routine nebulised Mg evidence.'],
+    ['6. HELIOX / IV\nSalbutamol (refractory)','Helium:oxygen mix.\nDecreases airway resistance.','IV salbutamol infusion if\nnebulised fails. ITU decision.','When failing all above — involve\nanaesthetics / ITU. May need\nNIV or intubation (last resort\n— intubation has HIGH risk in asthma).'],
+    ['7. ANTIBIOTICS','Only if evidence of\nbacterial infection.','Amoxicillin 500mg TDS OR\ndoxycycline 200mg loading\nthen 100mg OD if penicillin-allergic.','Viral triggers (rhinovirus) are\nmost common — antibiotics NOT\nroutinely given unless\npurulent sputum / consolidation on CXR.'],
+]
+story.append(plain_table(acute_mgmt,[CW*0.16,CW*0.22,CW*0.25,CW*0.37]))
+alert_box('WHEN TO CALL ITU: Life-threatening features + not responding to above after 30-60 minutes. Rising PaCO2. Exhaustion. Confusion. Silent chest not improving. Consider early intubation — but CAUTION: intubation in asthma carries high risk of dynamic hyperinflation + pneumothorax. Only intubate as last resort.', story)
+story.append(Spacer(1, 8))
+
+story.append(bp('<b>Part B: CHRONIC MANAGEMENT — The BTS/SIGN Stepwise Ladder (2022):</b>'))
+story.append(bp('MRCP Part 1 and 2 essential — know each step, which drugs are added, and when to step up or down.'))
+story.append(Spacer(1, 5))
+
+bts_steps = [
+    ['BTS Step','Treatment Added','Key Drug at This Step','When to Step Up'],
+    ['STEP 1\nMild intermittent\n< 2x/week symptoms','SABA as-needed only.\nSalbutamol 100-200mcg\nwhen needed (PRN).','Salbutamol (SABA)\nTerbutaline (alternative SABA)','Symptoms > 2 times/week\nOR night waking\nOR SABA > 2x/week.'],
+    ['STEP 2\nRegular preventer\n(most patients)','Add LOW-DOSE ICS.\nGiven REGULARLY every day\neven when well.','Beclometasone 200mcg/day\nFluticasone 100mcg/day\nBudesonide 200mcg/day','Poor control on step 2.\nSymptoms > 2x/week despite ICS.'],
+    ['STEP 3\nInitial add-on therapy','Add LABA to ICS.\nGiven as COMBINATION inhaler.\nALWAYS with ICS (never alone).','Salmeterol or Formoterol\n+ ICS combined:\nSeretide (salmeterol + fluticasone)\nSymbicort (formoterol + budesonide)','Still poorly controlled.\nFEV1 not improving.'],
+    ['STEP 3 ALTERNATIVES\n(if LABA not tolerated)','Leukotriene Receptor\nAntagonist (LTRA): Montelukast.\nOR slow-release theophylline.\nOR increase ICS dose.','Montelukast 10mg NOCTE\n(night-time, once daily)\nOR Theophylline SR\n(monitor blood levels)','LABA preferred over montelukast\nbut some patients prefer oral.'],
+    ['STEP 4\nPoor control on step 3','Increase ICS to MEDIUM dose.\nConsider: LTRA + LABA + ICS.\nConsider: referral to specialist.','Beclometasone > 400-800mcg/day\nFluticasone > 250mcg/day\nAdd montelukast to existing\nICS + LABA combination.','Refer to specialist for\nfurther phenotyping and\nbiologic therapy assessment.'],
+    ['STEP 5\nSevere refractory asthma\n(SPECIALIST only)','ORAL STEROIDS (lowest effective\ndose). BIOLOGICS if eligible.\nBronchial thermoplasty.','Prednisolone 5-10mg OD\nOR Biologics:\nOmalizumab (anti-IgE)\nMepolizumab (anti-IL-5)\nBenralizumab (anti-IL-5R)\nDupilumab (anti-IL-4R / IL-13)','Refer all step 5 patients to\nspecialist asthma clinic.\nPhenotyping essential before\nbiologic choice.'],
+]
+story.append(plain_table(bts_steps,[CW*0.17,CW*0.28,CW*0.27,CW*0.28]))
+story.append(Spacer(1, 5))
+
+story.append(bp('<b>Biologics for Severe Asthma — MRCP Part 2 Essential:</b>'))
+biologics_table = [
+    ['Drug Name','Target','Patient Type','MRCP Key Fact'],
+    ['Omalizumab\n(Xolair)','Anti-IgE monoclonal antibody.\nBinds free IgE.','Atopic (allergic) asthma.\nHigh total IgE.\nSensitised to perennial allergen.\nBMI consideration for dosing.','Given SC every 2-4 weeks.\nDose based on body weight AND\nbaseline IgE level. Can cause\nanaphylaxis — observe 2h after.'],
+    ['Mepolizumab\n(Nucala)','Anti-IL-5 antibody.\nReduces eosinophil production.','Eosinophilic asthma.\nBlood eosinophils > 0.3 x10^9/L.\nFrequent exacerbations.','SC monthly. Reduces exacerbations\nby ~50%. Must confirm high\neosinophil count before prescribing.\nAlso used in EGPA (eosinophilic GPA).'],
+    ['Benralizumab\n(Fasenra)','Anti-IL-5 receptor.\nDirectly depletes eosinophils.','Eosinophilic asthma.\nSimilar to mepolizumab.\nBlood eos > 0.3 x10^9/L.','SC: monthly x3, then\nevery 8 weeks. Faster\nand more complete eosinophil\ndepletion than mepolizumab.'],
+    ['Dupilumab\n(Dupixent)','Anti-IL-4R/IL-13.\nBlocks type 2 inflammation.','Moderate-severe eosinophilic\nasthma OR oral steroid-dependent.\nAlso for atopic eczema.','SC every 2 weeks. Works even\nif eosinophils normal. Also treats\natopic eczema and nasal polyps\n(same pathway). Good for Samter\'s.'],
+    ['Tezepelumab\n(Tezspire)','Anti-TSLP (thymic stromal\nlymphopoietin). Upstream blocker.','Severe uncontrolled asthma.\nBroader indication — works in\nnon-eosinophilic types too.','Most recent biologic. SC monthly.\nFirst to work in both eosinophilic\nAND non-eosinophilic severe asthma.\nHigh-level evidence.'],
+]
+story.append(plain_table(biologics_table,[CW*0.15,CW*0.22,CW*0.25,CW*0.38]))
+info_box('<b>PRESCRIBING KEY POINTS (Ganesh & Kuruvilla):</b> (1) SABA alone without ICS for > 2 weeks is dangerous — drives inflammation. (2) LABA must NEVER be used without ICS (risk of fatal asthma attack — black box warning). (3) Inhaler technique is the most commonly missed issue — check at every visit. (4) Spacer doubles drug delivery — recommend for ALL patients. (5) When prescribing prednisolone > 3 weeks, give PPI for gastric protection + bone protection (calcium + vitamin D).', story)
+memory_hook('BTS LADDER: Step 1 = SABA PRN. Step 2 = ADD ICS. Step 3 = ADD LABA (always with ICS). Step 4 = increase ICS + LTRA. Step 5 = oral steroids + biologics. KEY: LABA NEVER without ICS. Montelukast = good for exercise-induced + Samter. Magnesium = 2g IV for severe. FeNO > 40 + eosinophils > 0.3 = biologic candidate.', story)
+divider(story)
+
+# §8 Differential Diagnoses
+sec_header('Section 8: Differential Diagnoses — Conditions That Mimic Asthma', story)
+professor_says('Every MRCP question about a young breathless patient with wheeze is testing whether you know the DIFFERENTIALS. Some look exactly like asthma but are not. Missing these causes harm. Know each one and how to distinguish it.', story)
+
+story.append(img_diffmap)
+story.append(bp('Differential diagnosis map — age, pattern, and distinguishing features', sImg))
 story.append(Spacer(1, 6))
 
-story.append(bp('<b>Imaging in Asthma:</b>'))
-imaging_table = [
-    ['Test','When to Do It','What It Shows in Asthma'],
-    ['Chest X-ray (CXR)','Acute attack (to exclude complications).\nFirst attack at any age.','Usually NORMAL between attacks.\nIn attack: hyperinflation (flat diaphragms,\nhorizontal ribs, increased AP diameter).\nMay show: pneumothorax (complication),\npneumonia (trigger), mucus plugging.'],
-    ['CT Thorax\n(High resolution — HRCT)','Not routine for simple asthma.\nDone if: suspected ABPA, bronchiectasis,\nor diagnosis uncertain.','In ABPA: central bronchiectasis\n(bronchiectasis in the inner parts\nof the lung — characteristic pattern).\nMucus plugs. Tree-in-bud pattern.'],
-    ['CT/MRI Sinuses','Persistent symptoms. Suspected\nnasal polyps or sinusitis.','Nasal polyps (in Samter\'s triad).\nChronic sinusitis. Pan-sinusitis in ABPA.'],
-    ['Direct Laryngoscopy\nor Nasendoscopy','Suspected VCD (vocal cord dysfunction).\nSuspected upper airway abnormality.','In VCD: vocal cords PARADOXICALLY ADDUCT\n(close) during inspiration, when they should\nbe open. Diagnostic if done during an attack.\nBetween attacks: usually normal.'],
+diff_table = [
+    ['Condition','What It Is','How It Mimics Asthma','How To Tell Apart'],
+    ['VOCAL CORD\nDYSFUNCTION (VCD)','Paradoxical vocal cord adduction\nduring INSPIRATION.\nFunctional (psychogenic or habit).','Breathlessness + stridor or wheeze.\nOften young female.\nDoes not respond to salbutamol.\nMultiple ED visits.','Inspiratory wheeze/stridor\n(NOT expiratory).\nNormal spirometry + FeNO.\nLaryngoscopy: cords close in\nnot open. Treated with speech\ntherapy (NOT inhalers).'],
+    ['LARYNGEAL\nSPASM','Sudden forceful closure\nof vocal cords. Extreme VCD.\nCan be reflex (GERD, post-extubation).','Acute severe breathlessness\nin seconds. Stridor.\nPanic + feeling of choking.\nMay occur with asthma.','Typically self-limiting 30-60 sec.\nStridor INSPIRATORY.\nNo response to salbutamol.\nGERD-related: nocturnal episodes.\nTreatment: reassure + breathing\ntechniques + PPI for GERD.'],
+    ['ANAPHYLAXIS with\nLARYNGEAL OEDEMA','Severe systemic IgE-mediated\nhypersensitivity reaction.\nRapid onset after allergen.','Acute bronchospasm +\nbreathlessness + wheeze.\nMay present as "asthma attack".','Look for: urticaria, angioedema,\nhypotension, facial swelling,\nstridor = laryngeal oedema.\nTryptase raised.\nMUST GIVE ADRENALINE (epinephrine)\n0.5mg IM immediately.\nDEATH without epinephrine.'],
+    ['HEREDITARY\nANGIOOEDEMA (HAE)','C1-esterase inhibitor deficiency.\nAutosomal dominant.\nBradykinin-mediated.','Laryngeal oedema = life-threatening\nairway obstruction.\nRecurrent angioedema attacks.','No urticaria, no allergy.\nC4 low (even between attacks).\nC1-esterase inhibitor low.\nAdrenaline does NOT work (bradykinin not IgE).\nTreatment: C1-INH concentrate\nor icatibant (bradykinin blocker).'],
+    ['ALLERGIC\nBRONCHOPULMONARY\nASPERGILLOSIS (ABPA)','Hypersensitivity reaction to\nAspergillus fumigatus\ncolonising asthmatic airways.','Difficult-to-control asthma.\nBrown mucus plugs.\nRecurrent infiltrates on CXR.\nBronchiectasis developing.','Central bronchiectasis on CT.\nHigh serum IgE (> 1000 IU/mL).\nSpecific IgE/IgG to Aspergillus +ve.\nBlood eosinophils high.\nTreatment: oral prednisolone +\nitraconazole antifungal.'],
+    ['EOSINOPHILIC\nBRONCHITIS','Airway eosinophilic inflammation\nwithout bronchospasm.\nCause of chronic cough.','Dry cough (cough-variant).\nEosinophilia in sputum.\nMistaken for cough-variant asthma.','NORMAL spirometry.\nNormal airway hyperresponsiveness test.\nRaised sputum eosinophils\n(induced sputum).\nTreats well with ICS.\nNo bronchodilator needed.'],
+    ['COPD\n(Older smoker — NOT this patient\nbut MRCP tests this)','Chronic obstructive pulmonary\ndisease. Neutrophilic.\nIrreversible airflow obstruction.','Chronic cough + wheeze +\nbreathlessness. May have\nhyperinflated chest. Barrel chest.','Age > 35. Smoker > 10 pack years.\nFEV1/FVC < 0.7 BUT < 12%\nreversibility. CXR: hyperinflation.\nNO nocturnal symptoms. Steady decline.'],
+    ['CARDIAC ASTHMA\n(Heart failure)','Pulmonary oedema from left\nheart failure. Bronchospasm\nfrom fluid in airways.','Acute breathlessness + wheeze\n+ crepitations. Mimics acute asthma.\nCommon in elderly.','Bibasal crepitations + elevated JVP\n+ peripheral oedema. CXR: bat-wing\nedema + Kerley B lines.\nBNP raised. Responds to diuretics\nand GTN, NOT salbutamol.'],
 ]
-story.append(plain_table(imaging_table,[CW*0.2,CW*0.35,CW*0.45]))
-
-info_box('<b>MRCP Key — PaCO2 in Asthma:</b> In the early stages of an asthma attack, the patient breathes fast and hard. This causes them to blow off CO2. So PaCO2 is LOW (hypocapnia). As the patient tires, breathing becomes less effective. PaCO2 RISES towards normal. A NORMAL PaCO2 in a patient working hard to breathe with asthma = WARNING SIGN. A HIGH PaCO2 = the patient is exhausted and about to stop breathing = ICU emergency.', story)
-
-memory_hook('INVESTIGATIONS IN ASTHMA: Spirometry (FEV1/FVC <70%) + Reversibility (>12% + 200ml after salbutamol) = confirms asthma. FeNO >40 = eosinophilic inflammation. Peak flow diary variability >20% = asthma. C4 low = HAE. High total IgE + Aspergillus IgE = ABPA. ABG: normal/high PaCO2 in attack = ICU.', story)
+story.append(plain_table(diff_table,[CW*0.17,CW*0.22,CW*0.25,CW*0.36]))
+info_box('<b>REMEMBERING: Inspiratory vs Expiratory sounds</b> — STRIDOR = upper airway obstruction = heard breathing IN = larynx, trachea, epiglottis. WHEEZE = lower airway = heard breathing OUT = bronchioles, bronchi. Both can overlap in very severe disease. Anaphylaxis with laryngeal oedema can produce BOTH stridor + wheeze.', story)
+memory_hook('DIFFERENTIALS: VCD = inspiratory wheeze + no response to salbutamol + laryngoscopy. Anaphylaxis = urticaria + hypotension + tryptase raised → epinephrine IM NOW. HAE = C4 low + C1-INH low + no urticaria → icatibant (NOT epinephrine). ABPA = IgE > 1000 + Aspergillus IgE/IgG + central bronchiectasis. Cardiac asthma = elderly + bibasal creps + BNP raised + diuretics help.', story)
 divider(story)
 
-# ── §7 MANAGEMENT — ACUTE AND CHRONIC ────────────────────────────────────────
-sec_header('Section 7: Management — Treating the Acute Attack and Long-Term Control', story)
-
-professor_says('Treatment of asthma has two parts: (1) Stopping the acute attack NOW. (2) Preventing the next attack from happening. Many patients only focus on the rescue inhaler and forget the preventer. This is why their asthma keeps coming back.', story)
-
-story.append(bp('<b>PART A: Treating the Acute Attack — Step by Step:</b>'))
-story.append(Spacer(1, 3))
-
-acute_table = [
-    ['Severity','First Steps','Additional Treatment','When to Consider ICU'],
-    ['MODERATE\n(PEFR 50-75%)\nCan speak sentences','Salbutamol 2.5–5mg\nnebulised. Repeat every\n20–30 min if needed.\nOxygen to maintain\nSpO2 94–98%.\nPrednisolone 40mg oral.','If not improving after\n3 nebulisers:\nAdd ipratropium 500mcg\nnebulised.\nAdmit to hospital.','Usually managed on\nmedical ward.\nICU only if deteriorates.'],
-    ['ACUTE SEVERE\n(PEFR 33-50%)\nCannot complete\nsentences','Immediate high-flow O2\n(15L non-rebreathe).\nSalbutamol 5mg\nnebulised CONTINUOUSLY\n(back-to-back).\nIpratropium 500mcg\nneb every 4-6 hours.\nHydrocortisone 100mg IV\nor Prednisolone 40mg oral.','Magnesium sulphate:\n1.2–2g IV over 20 min\n(first-line add-on for\nacute severe asthma).\nCXR to exclude\npneumothorax.','If PEFR not improving\nafter 1 hour.\nPaCO2 rising.\nExhausted patient.'],
-    ['LIFE-THREATENING\n(PEFR <33%)\nSilent chest\nCyanosis/Confusion','CALL SENIOR HELP + ICU.\nHigh flow O2.\nContiguous salbutamol\nnebulisers.\nIpratropium nebulisers.\nIV hydrocortisone 100mg.','Magnesium sulphate\n1.2–2g IV over 20 min.\nIV salbutamol infusion\n(5–10 mcg/min) if\nnot responding.\nIV aminophylline\n(rarely — specialist\nconsult needed).\nHeliox (70:30\nHelium:Oxygen mix).','IMMEDIATE ICU involvement.\nPrepare for intubation\nif deteriorating.\nNon-invasive ventilation\nmay help bridge.'],
-]
-story.append(plain_table(acute_table,[CW*0.18,CW*0.28,CW*0.3,CW*0.24]))
-story.append(Spacer(1, 5))
-
-story.append(bp('<b>Why Magnesium Sulphate Works in Asthma:</b>'))
-story.append(bp('Magnesium (mag-NEE-zee-um) is a natural calcium channel blocker. In smooth muscle, contraction depends on calcium entering the muscle cell. Magnesium blocks calcium entry. Result: smooth muscle in the bronchiole wall RELAXES. Airways open.'))
-story.append(bp('<b>Dose:</b> 1.2–2g IV over 20 minutes. Given ONCE. Evidence from BTS guidelines and MAGICS trial.'))
-story.append(bp('<b>Important:</b> Also available as NEBULISED magnesium sulphate (isotonic solution, 2.5ml) combined with salbutamol. Can be given even in primary care.'))
-story.append(Spacer(1, 5))
-
-story.append(bp('<b>PART B: Long-Term Management — BTS/SIGN Step-Up Therapy:</b>'))
-story.append(bp('The British Thoracic Society (BTS) and Scottish Intercollegiate Guidelines Network (SIGN) publish a step-up system. You start at the lowest step and move up if symptoms are not controlled.'))
-story.append(Spacer(1, 3))
-
-steps_table = [
-    ['Step','Treatment','What It Does','When to Use This Step'],
-    ['Step 1\n(Mild intermittent)','SABA (Short-Acting Beta-2 Agonist)\nInhaled salbutamol PRN only.\nNo daily preventer needed.','Salbutamol opens airways\nwithin minutes. Lasts 4 hours.','Symptoms < twice per week.\nNocturnal symptoms < once/month.\nNo limitation of activity.'],
-    ['Step 2\n(Regular preventer)','Add ICS\n(Inhaled Corticosteroid):\nBeclometasone 200–400 mcg/day\nor Budesonide or Fluticasone.\nSABA PRN as well.','ICS reduces airway\ninflammation daily.\nReduces exacerbations\nand long-term remodelling.','Using SABA more than twice\nper week. Any nocturnal\nsymptoms. Start here for most\nnewly diagnosed asthma.'],
-    ['Step 3\n(Add-on therapy)','Add LABA (Long-Acting Beta-2\nAntagonist): Salmeterol or\nFormoterol PLUS ICS.\nCombination inhalers available:\nSeretide (salmeterol+fluticasone),\nSymbicort (formoterol+budesonide).','LABA opens airways for\n12 hours. Added to ICS,\nnot used alone\n(LABA alone = risk of\nasthma death if no ICS).','Not controlled on\nStep 2. LABA added only\nIF already on ICS.'],
-    ['Step 4\n(Increase ICS or\nadd further agents)','High-dose ICS (up to 2000mcg\nbeclometasone/day).\nAdd LTRA (Montelukast)\nor Theophylline or LAMA\n(Tiotropium).','Montelukast blocks\nleukotriene receptors.\nTheoyphylline: bronchodilator\n+ anti-inflammatory.\nTimotropium: anticholinergic.','Still not controlled\non Step 3. Review\ninhaler technique first.\nRefer to specialist.'],
-    ['Step 5\n(Specialist care)','BIOLOGICS:\nOmalizumab (anti-IgE).\nMepolizumab (anti-IL-5).\nBenralizumab (anti-IL-5Ra).\nDupilumab (anti-IL-4/13).\n+/- Oral steroids\n(lowest dose possible).','Biologics target\nspecific parts of the\ninflammatory pathway.\nDramatic effect in\nselected patients.','Severe refractory asthma\nnot controlled on maximum\ninhaled therapy. Requires\nspecialist centre.\nPatients selected by\nbiomarker profile.'],
-]
-story.append(plain_table(steps_table,[CW*0.12,CW*0.3,CW*0.25,CW*0.33]))
-story.append(Spacer(1, 5))
-
-story.append(bp('<b>Biologics — The Modern Revolution in Severe Asthma:</b>'))
-bio_table = [
-    ['Biologic','Target','Mechanism','Who Gets It','Key Points'],
-    ['Omalizumab\n(Xolair)','IgE antibody\n(binds to free IgE)','Neutralises IgE before\nit can attach to mast\ncells. Mast cells\ncannot degranulate.','Total IgE 30–1500 IU/mL.\nSensitised to a perennial\nallergen (dust mite, cat).\nStep 4/5 uncontrolled.','Injected every 2–4 weeks.\nDose based on IgE level\nand body weight.\n16-week trial then assess.'],
-    ['Mepolizumab\n(Nucala)','IL-5 cytokine','Blocks IL-5 which\nstimulates eosinophil\nproduction. Reduces\nblood eosinophil count.','Blood eosinophils\n>= 300 cells/uL.\nFrequent exacerbations\ndespite Step 4.','Monthly SC injection.\nReduces exacerbation\nrate by ~50%. Can\nreduce/stop oral steroids.'],
-    ['Benralizumab\n(Fasenra)','IL-5 receptor\n(IL-5Ra)','Blocks IL-5 receptor\non eosinophils.\nAlso directly depletes\neosinophils via ADCC.','Blood eosinophils\n>= 300 cells/uL.\nStep 4 uncontrolled.','First 3 doses monthly,\nthen every 8 weeks.\nVery rapid eosinophil\ndepletion.'],
-    ['Dupilumab\n(Dupixent)','IL-4 receptor alpha\n(IL-4Ra)','Blocks both IL-4\nand IL-13 signalling.\nReduces multiple\nallergic pathways.','FeNO >= 25 ppb or\neosinophils >= 150.\nAlso approved for\natopic dermatitis.','Every 2 weeks SC.\nWorks across multiple\natopic conditions.'],
-    ['Tezepelumab\n(Tezspire)','TSLP\n(Thymic Stromal\nLymphopoietin)','Blocks TSLP — the\nupstream cytokine\nthat triggers the\nentire allergic cascade.\nBroadest target.','Severe uncontrolled\nasthma regardless\nof eosinophil level\n(also non-eosinophilic).','Monthly SC. Newest\nbiologic. Works in\nboth eosinophilic\nAND non-eosinophilic\nasthma.'],
-]
-story.append(plain_table(bio_table,[CW*0.14,CW*0.1,CW*0.22,CW*0.22,CW*0.32]))
-
-info_box('<b>Why This Patient Keeps Relapsing — The Answer:</b> This patient is on the right treatment (steroids work). But she keeps relapsing. The most likely reasons: (1) Trigger still present — allergen at home or workplace. (2) Undertreatment — needs step-up. (3) Poor inhaler technique — most patients use inhalers incorrectly. (4) Poor adherence (forgetting preventer inhaler daily). (5) Second diagnosis — consider VCD, ABPA, or HAE contributing. (6) Premenstrual asthma — if attacks match menstrual cycle. Action: check technique, check trigger, step up, and refer to specialist.', story)
-
-memory_hook('BTS STEPS: 1=SABA PRN. 2=Add ICS. 3=Add LABA (NEVER LABA without ICS). 4=High ICS + Montelukast/Theophylline/Tiotropium. 5=Biologics (Omalizumab=high IgE; Mepolizumab/Benralizumab=high eosinophils; Tezepelumab=any type). Magnesium sulphate 1.2-2g IV = standard in acute severe asthma.', story)
-divider(story)
-
-# ── §8 DIFFERENTIAL DIAGNOSES IN DETAIL ──────────────────────────────────────
-sec_header('Section 8: Differential Diagnoses — All the Conditions That Look Like Asthma', story)
-
-professor_says('This is the most important section for MRCP. Many conditions mimic asthma. If you treat them all as asthma, you will harm some patients. Know each condition deeply — the key difference, the key test, and the key treatment.', story)
-
-# ── VCD ──
-story.append(bp('<b>8a. Vocal Cord Dysfunction (VCD) / Inducible Laryngeal Obstruction (ILO)</b>'))
-professor_says('VCD is the great mimic. It looks like asthma, sounds like asthma — but is NOT asthma. Patients with VCD are often wrongly labelled as "brittle asthma" and given unnecessary steroids for years. Knowing VCD changes their lives.', story)
-
-story.append(bp('<b>What is VCD?</b>'))
-story.append(bp('VCD = Vocal Cord Dysfunction. The vocal cords (two muscular folds in the larynx) abnormally close DURING BREATHING — especially during inspiration (breathing in). This blocks air entry. The patient cannot breathe in properly.'))
-story.append(bp('In normal breathing: vocal cords OPEN WIDE when you breathe in. In VCD: the cords close (adduct) paradoxically — backwards from what they should do. This is why it is also called <b>Paradoxical Vocal Cord Movement (PVCM)</b>.'))
-story.append(bp('<b>The newer term:</b> ILO = Inducible Laryngeal Obstruction. More accurate because the larynx (not just the cords) is involved.'))
-story.append(Spacer(1, 4))
-
-vcd_table = [
-    ['Feature','VCD / ILO','Asthma'],
-    ['Age and sex','Young women most common.\nAthletes.\nHealthcare workers.','Any age. Childhood onset common.'],
-    ['Sound','STRIDOR — heard on\nBREATHING IN (inspiratory).\nHarsh, croaking sound.','WHEEZE — heard on\nBREATHING OUT (expiratory).\nMusical, whistling.'],
-    ['Triggers','Irritants (chlorine, perfume,\nfumes). Exercise.\nAnxiety/stress.\nPost-nasal drip. Emotion.','Allergens. Cold air. Exercise.\nNSAIDs. Viral URTI. Smoke.'],
-    ['Response to\nSalbutamol','Does NOT respond.\nSalbutamol does not help\nthe larynx.','Significant improvement.\nFEV1 improves > 12%.'],
-    ['Response to\nSteroids','Does NOT respond.\nSteroids do nothing\nfor muscle spasm.','YES — ICS and oral steroids\nclear the inflammation.'],
-    ['Between attacks','Normal spirometry.\nNormal FeNO.\nNormal peak flow.\nNo wheeze on auscultation.','May have abnormal spirometry.\nRaised FeNO.\nVariable PEFR.'],
-    ['Diagnosis','Laryngoscopy or\nnasendoscopy DURING\nan attack. See cords\nclosing on inspiration.','Spirometry + reversibility\ntest. FeNO. Peak flow diary.'],
-    ['Flow-volume loop','FLAT INSPIRATORY LIMB\n(cut off at top of loop).\nExpiratory limb normal.','Concave (scooped)\nexpiratory limb.\nInspiratory limb normal.'],
-    ['Treatment','Speech therapy\n(breathing retraining,\nnasendoscopy biofeedback).\nTreat GERD if present.\nPsychological support.\nAvoid triggers.','Inhaled steroids.\nSalbutamol.\nStep-up therapy.'],
-]
-story.append(plain_table(vcd_table,[CW*0.22,CW*0.39,CW*0.39]))
-story.append(Spacer(1, 4))
-
-info_box('<b>VCD KEY FACTS for MRCP:</b> (1) VCD is VERY COMMON and COMMONLY MISDIAGNOSED as asthma. (2) Stridor = upper airway = VCD. Wheeze = lower airway = asthma. (3) VCD does NOT respond to salbutamol or steroids. (4) Diagnosed by nasendoscopy/laryngoscopy DURING an episode. (5) Treated by speech and language therapist (SLT) with breathing exercises. (6) FeNO is NORMAL in VCD (no eosinophilic inflammation). (7) Many patients have BOTH VCD and asthma simultaneously.', story)
-divider(story)
-
-# ── Laryngospasm ──
-story.append(bp('<b>8b. Laryngospasm (LAR-in-go-spazm) — Sudden Airway Closure</b>'))
-story.append(bp('<b>What is it?</b> A sudden, brief, involuntary spasm (tightening) of the laryngeal muscles. The vocal cords snap shut completely. The patient cannot breathe at all for a few seconds to minutes. It is terrifying. Then it resolves spontaneously.'))
-story.append(Spacer(1, 3))
-for pt in [
-    '<b>Presentation:</b> Sudden onset breathlessness or inability to breathe. High-pitched inspiratory stridor or silence (complete closure). Usually lasts seconds to 1–2 minutes. Resolves on its own. Patient very frightened.',
-    '<b>Common triggers:</b> GERD (acid reflux irritating the larynx — most common cause). Chlorine gas. Anaesthetic gas (during induction — common surgical emergency). Post-extubation. Emotional stress. Spicy food. Cold liquids.',
-    '<b>GERD-induced laryngospasm:</b> Acid from the stomach refluxes up to the larynx. Even tiny amounts of acid on the larynx trigger a violent protective spasm. Often happens at night (lying flat). Patient wakes up unable to breathe for a minute. Terrifying.',
-    '<b>Diagnosis:</b> Clinical history. Laryngoscopy between attacks usually normal. 24-hour pH monitoring confirms GERD.',
-    '<b>Treatment:</b> Treat underlying GERD with PPI (proton pump inhibitor — omeprazole 20–40mg daily). Lifestyle: elevate head of bed, avoid food 3 hours before sleep, avoid alcohol/caffeine. Breathing exercises. In acute attack: remain calm. Breathe through nose slowly. Sipping cold water may help. Valsalva manoeuvre (bear down). IV calcium gluconate if hypocalcaemia is the cause.',
-    '<b>Hypocalcaemia-induced laryngospasm:</b> Low calcium (from hypoparathyroidism, after thyroid surgery damaging parathyroids) causes muscle over-excitability. Laryngospasm is a symptom. Chvostek\'s sign (tapping facial nerve causes facial twitch) and Trousseau\'s sign (BP cuff inflation causes carpal spasm). Treat with IV calcium gluconate.',
-]:
-    story.append(bp(f'• {pt}'))
-divider(story)
-
-# ── Laryngeal Oedema / Anaphylaxis ──
-story.append(bp('<b>8c. Laryngeal Oedema — Allergic Swelling of the Airway</b>'))
-story.append(bp('<b>What is it?</b> Laryngeal oedema (ee-DEE-mah) = swelling of the laryngeal tissues. This narrows the airway rapidly. Can completely block air entry. A medical emergency.'))
-story.append(Spacer(1, 3))
-for pt in [
-    '<b>Most common cause: Anaphylaxis</b> (ana-fill-AX-iss) = a severe, life-threatening allergic reaction. IgE-mediated mast cell degranulation causes massive histamine release → laryngeal oedema + bronchospasm + vasodilation + urticaria (hives).',
-    '<b>Common triggers of anaphylaxis:</b> Nuts (peanuts, tree nuts). Shellfish. Bee/wasp sting (venom). Penicillin and other drugs. Latex. Contrast dye. Exercise (exercise-induced anaphylaxis). Idiopathic (no cause found).',
-    '<b>Features of anaphylaxis:</b> Urticaria (URTIH-kair-ee-ah) = hives = raised itchy red wheals on skin. Angioedema (swelling of lips, tongue, face). Laryngeal oedema (stridor, hoarse voice, unable to swallow). Bronchospasm (wheeze). Hypotension (low blood pressure). Tachycardia.',
-    '<b>Treatment of anaphylaxis:</b> ADRENALINE (epinephrine) IM 0.5mg (0.5ml of 1:1000) into the OUTER THIGH. This is the ONLY proven life-saving treatment. Give IMMEDIATELY. IM, not IV (unless cardiac arrest). Repeat after 5 minutes if no improvement. Then: IV fluids, chlorphenamine (antihistamine) IV 10mg, hydrocortisone 200mg IV. Lie patient flat (unless vomiting/dyspnoeic — then sit up). Airway support.',
-    '<b>ACE Inhibitor-induced angioedema:</b> ACE inhibitors (ramipril, lisinopril, enalapril) block the breakdown of bradykinin. Bradykinin accumulates and causes angioedema of the face, lips, and larynx — WITHOUT urticaria. Can occur at ANY TIME after starting the drug — even years later. Does NOT respond to adrenaline or antihistamines. Treatment: stop the ACE inhibitor. IV icatibant (bradykinin B2 receptor antagonist) for severe episodes. Switch to ARB (but 10% cross-reactivity) or avoid both.',
-]:
-    story.append(bp(f'• {pt}'))
-
-alert_box('ADRENALINE IN ANAPHYLAXIS: 0.5mg IM (outer thigh). Use EpiPen if available. This is the ONLY proven life-saving treatment. Antihistamines and steroids are SECONDARY — they are NOT life-saving in acute anaphylaxis. Never delay adrenaline to give antihistamine first.', story)
-divider(story)
-
-# ── HAE ──
-story.append(bp('<b>8d. Hereditary Angioedema (HAE) — The Great Impostor</b>'))
-professor_says('HAE is rare but dangerous. It causes laryngeal swelling that kills. Unlike anaphylaxis, it does NOT have urticaria. Adrenaline does NOT help. If you miss this diagnosis, your patient could die from the next episode.', story)
-
-story.append(bp('<b>What is HAE?</b>'))
-story.append(bp('HAE = a genetic (inherited) condition. The body is missing or has low levels of <b>C1-esterase inhibitor (C1-INH)</b>. This protein normally controls the complement system and the contact activation pathway (kinin system).'))
-story.append(bp('Without C1-INH: bradykinin (BRAD-ee-KY-nin) — a peptide that makes blood vessels leaky — accumulates in huge amounts. Result: swelling (angioedema) in deep tissues.'))
-story.append(Spacer(1, 3))
-
-hae_table = [
-    ['Feature','HAE','Allergic Angioedema (Anaphylaxis)'],
-    ['Mechanism','Bradykinin-mediated.\nC1-INH deficiency or dysfunction.\nGenetic.','Histamine-mediated.\nIgE mast cell degranulation.\nAcquired (after allergen exposure).'],
-    ['Urticaria (hives)','ABSENT — there are NO HIVES.\nThis is the KEY differentiator.','PRESENT — itchy wheals\non skin are hallmark.'],
-    ['Onset','Slow — over hours.\nBuilds gradually over 24–72 hours.','Fast — minutes to hours.\nPeak within 30 minutes of trigger.'],
-    ['Triggers','Trauma (even minor — dental work).\nStress. Oestrogen (OCP trigger!).\nACE inhibitors (worsen HAE).\nInfection. Menstruation.','Allergen exposure:\nnuts, bees, drugs, latex.'],
-    ['Sites of swelling','Face, lips, tongue, larynx.\nAbdomen (causes severe\ncolic — can mimic\nacute abdomen).\nGenitalia. Extremities.','Face, lips, tongue, throat.\nGeneralised skin hives.\nBronchospasm. Anaphylaxis.'],
-    ['Family history','Usually YES — autosomal dominant\n(parent also had episodes).\nBut new mutations occur.','No family pattern.'],
-    ['Blood tests','C4 LOW (best screening test).\nC1-INH level LOW (Type 1, 80%).\nC1-INH function LOW\n(Type 2, 20%).','C4 normal.\nC1-INH normal.\nIgE raised. Tryptase raised.'],
-    ['Response to\nadrenaline','NO — does NOT respond.\nBradykinin pathway\nnot affected by adrenaline.','YES — adrenaline is\nlife-saving in anaphylaxis.'],
-    ['Response to\nantihistamines','NO — histamine is NOT\nthe mechanism.','YES — helps urticaria\nand mild symptoms.'],
-    ['Treatment\n(acute attack)','C1-INH concentrate (Berinert).\nIcatibant (bradykinin B2\nreceptor antagonist).\nFresh Frozen Plasma (FFP)\nif above not available.','Adrenaline IM 0.5mg.\nChlorphenamine IV.\nHydrocortisone IV.\nIV fluids.'],
-    ['Prophylaxis\n(prevention)','Tranexamic acid (anti-fibrinolytic).\nDanazol (androgen — increases\nC1-INH synthesis). Lanadelumab\n(monoclonal antibody — kallikrein\ninhibitor). C1-INH infusion\nbefore planned procedures.','Allergen avoidance.\nEpiPen prescription.\nImmunotherapy in some cases.'],
-]
-story.append(plain_table(hae_table,[CW*0.2,CW*0.4,CW*0.4]))
-story.append(Spacer(1, 4))
-
-info_box('<b>HAE Types:</b> Type 1 (80%): C1-INH level LOW, C1-INH function LOW, C4 LOW. Type 2 (20%): C1-INH level NORMAL or HIGH, but C1-INH function LOW, C4 LOW. Type 3 (rare): C1-INH normal, caused by FXII gene mutation, usually in women on oestrogen-containing OCP. C4 is LOW in ALL types during attacks and often LOW between attacks — making it the BEST SCREENING TEST.', story)
-
-memory_hook('HAE KEY POINTS: No urticaria (hives) + slow swelling + family history + abdominal colic = THINK HAE. C4 LOW = best screening test. C1-INH low = confirms it. Adrenaline and antihistamines DO NOT WORK. Treatment: C1-INH concentrate or Icatibant. OCP worsens HAE (oestrogen trigger). ACE inhibitors CONTRAINDICATED in HAE.', story)
-divider(story)
-
-# ── ABPA ──
-story.append(bp('<b>8e. Allergic Bronchopulmonary Aspergillosis (ABPA)</b>'))
-story.append(bp('<b>What is it?</b> ABPA = an allergic reaction to the fungus <b>Aspergillus fumigatus</b> (as-PER-jih-lus fyoo-MIH-gay-tus). The fungus colonises (lives in) the airways but does not invade. The immune system overreacts to it.'))
-story.append(bp('Think of it like having a wild animal living in your house that you are severely allergic to. The animal is not attacking you, but your immune system is causing massive damage trying to fight it.'))
-story.append(Spacer(1, 3))
-for pt in [
-    '<b>Who gets it:</b> Almost always in patients with pre-existing asthma OR cystic fibrosis. Aspergillus lives in soil, compost, rotting vegetation, old buildings.',
-    '<b>Symptoms:</b> Wheeze (worse than usual asthma). Cough with brownish or black mucus plugs (the fungus is in the mucus). Recurrent lung collapse (mucus plug blocks a bronchus). Fever. Night sweats. Weight loss.',
-    '<b>Diagnostic criteria (modified Rosenberg-Patterson):</b> (1) Asthma. (2) Total IgE >1000 IU/mL (very high). (3) Aspergillus-specific IgE raised. (4) Aspergillus precipitins (IgG antibodies) positive. (5) Blood eosinophilia. (6) Central bronchiectasis on CT (bronchiectasis in the inner, central parts of the lung — opposite to the peripheral pattern of other bronchiectasis). (7) Fleeting pulmonary infiltrates on CXR (shadows that come and go).',
-    '<b>CT findings:</b> Central bronchiectasis. Mucoid impaction (mucus plugs showing as "finger-in-glove" or "toothpaste" shadows on CXR). High-attenuation mucus (calcium in mucus plugs).',
-    '<b>Treatment:</b> Oral prednisolone (0.5mg/kg/day for 2 weeks, then taper over 3–6 months) to suppress the immune reaction. <b>Plus</b> antifungal: itraconazole 200mg twice daily (or voriconazole) for 4–6 months to reduce fungal burden. Monitor: total IgE (should fall with treatment — a rising IgE means relapse).',
-    '<b>Long-term complications:</b> Proximal bronchiectasis. Lung fibrosis. Aspergilloma (fungal ball forming in a cavity).',
-]:
-    story.append(bp(f'• {pt}'))
-
-memory_hook('ABPA: Asthma + very HIGH total IgE (>1000) + brownish mucus plugs + central bronchiectasis on CT + Aspergillus IgE raised. Treatment: Prednisolone + Itraconazole. Monitor: total IgE falls with treatment. Rising IgE = relapse.', story)
-divider(story)
-
-# ── Eosinophilic bronchitis ──
-story.append(bp('<b>8f. Eosinophilic Bronchitis (EB)</b>'))
-story.append(bp('<b>What is it?</b> Eosinophilic bronchitis = inflammation of the airways with lots of eosinophil cells — exactly like asthma. BUT there is NO bronchoconstriction and NO airflow obstruction. The patient has <b>COUGH ONLY</b>.'))
-story.append(Spacer(1, 3))
-for pt in [
-    '<b>Symptoms:</b> Chronic dry cough. No wheeze. No breathlessness. Cough is often the only symptom — worse in the morning or with exposure to irritants.',
-    '<b>Spirometry:</b> NORMAL — this is the key difference from asthma. FEV1/FVC normal. No reversibility.',
-    '<b>FeNO:</b> RAISED (>25 ppb) — shows eosinophilic inflammation present.',
-    '<b>Sputum:</b> Induced sputum shows > 3% eosinophils — confirms the diagnosis.',
-    '<b>Why no bronchoconstriction?</b> In asthma, mast cells are located INSIDE the smooth muscle layer of bronchioles. In EB, mast cells are in the epithelium (surface lining) only — not in the muscle. So they cannot trigger muscle spasm.',
-    '<b>Treatment:</b> Inhaled corticosteroids (ICS) — very effective. Symptoms resolve completely. This is why it is important to diagnose: responds well to simple inhaler therapy.',
-    '<b>Common causes:</b> Occupational exposure (flour, latex). Isocyanates. Post-nasal drip.',
-]:
-    story.append(bp(f'• {pt}'))
-divider(story)
-
-# ── GERD ──
-story.append(bp('<b>8g. GERD-Induced Cough and Airway Disease</b>'))
-story.append(bp('<b>What is it?</b> GERD (Gastro-Oesophageal Reflux Disease) = acid from the stomach flows backwards up the oesophagus (food pipe). This can trigger airway symptoms through two mechanisms:'))
-story.append(Spacer(1, 3))
-for pt in [
-    '<b>Vagal reflex mechanism:</b> Acid touches the lower oesophagus. This triggers the vagus nerve (which also supplies the airways). The vagus nerve reflex causes cough and mild bronchoconstriction — even without acid reaching the lungs.',
-    '<b>Micro-aspiration mechanism:</b> Tiny amounts of acid or stomach contents are aspirated (breathed in) into the airways. This directly damages and irritates the bronchial mucosa, causing inflammation and airway hyperresponsiveness.',
-    '<b>Laryngopharyngeal reflux (LPR):</b> Acid reaches the larynx. Causes hoarseness (husky voice). Chronic throat-clearing. Globus sensation (feeling of something stuck in the throat). Laryngospasm at night.',
-    '<b>Presentation:</b> Chronic cough (often the only symptom — no heartburn in 40%). Worse lying flat. Worse after meals. Worse at night. Hoarse voice. Clears throat frequently.',
-    '<b>Asthma-GERD link:</b> GERD is found in up to 70% of asthma patients. GERD can worsen asthma control. Treating GERD can improve asthma in some patients.',
-    '<b>Diagnosis:</b> 24-hour ambulatory pH monitoring (gold standard). High-resolution oesophageal manometry. Upper GI endoscopy (to assess oesophagitis). Empirical PPI trial: if symptoms improve on 4-week PPI trial = GERD confirmed.',
-    '<b>Treatment:</b> PPI (omeprazole 20–40mg daily). Lifestyle: head of bed elevated, avoid food 3 hours before sleep, avoid coffee/alcohol/fatty foods/chocolate/mint. Weight loss if obese. H2-antagonist (ranitidine) or alginate (Gaviscon) add-ons.',
-]:
-    story.append(bp(f'• {pt}'))
-
-memory_hook('GERD CAUSES: Cough (without heartburn in 40%). Laryngospasm at night (wakes from sleep gasping). Hoarse voice. Asthma triggers. KEY TEST: 24-hour pH monitoring. TREATMENT: PPI + head of bed elevated + avoid food 3h before sleep.', story)
-divider(story)
-
-# ── §9 COMPLICATIONS ──────────────────────────────────────────────────────────
-sec_header('Section 9: Complications of Acute Severe Asthma', story)
-
-professor_says('Most patients with asthma do well with treatment. But in severe attacks, life-threatening complications can occur — and you need to recognise them quickly.', story)
+# §9 Complications
+sec_header('Section 9: Complications of Asthma', story)
+professor_says('Asthma complications arise from either the disease itself (poorly controlled), the acute attack (immediate threats to life), or from long-term treatment side effects. All are examinable.', story)
 
 comp_table = [
-    ['Complication','What Happens','Signs','Treatment'],
-    ['Pneumothorax\n(noo-mo-THOR-ax)\n(air in chest space)','Overinflated lung bursts.\nAir leaks into the space\nbetween lung and chest wall.\nLung collapses.','Sudden WORSENING of\nbreathing in a known asthma\npatient. Unilateral reduced\nbreath sounds. Hyper-resonance\non one side. Tracheal deviation\n(tension pneumothorax).','Small: observation.\nLarge/tension: needle\ndecompression (2nd intercostal\nspace, mid-clavicular line) THEN\nchest drain. Never delay\nin tension pneumothorax.'],
-    ['Respiratory Failure','Airways so blocked that\ngas exchange fails completely.\nPaCO2 rises.\nPaO2 falls.','Cyanosis. Confusion.\nRising PaCO2 on ABG.\nBradycardia (late sign).','ICU. Non-invasive ventilation\n(NIV) may help.\nIntubation and\nmechanical ventilation\nif deteriorating.'],
-    ['Mucus Plugging and\nLobe Collapse\n(atelectasis)','Thick mucus plugs block\na main bronchus or lobar\nbronchus. Air cannot\nget past. Lobe collapses.','Sudden worsening.\nCXR: loss of volume\nin one lobe. Opacification.','Physiotherapy.\nNebulised DNase if repeated.\nBronchoscopy to remove\nplug in severe cases.'],
-    ['Hypokalaemia\n(low potassium\nfrom salbutamol)','Salbutamol stimulates beta-2\nreceptors which drive K+ into\ncells. Serum K+ falls.','Muscle weakness. Cramps.\nECG changes (U waves,\nflattened T waves).\nArrhythmia risk.','Monitor K+ in all\nacute severe asthma.\nPotassium replacement\nIV if <3.0 mmol/L.'],
-    ['Lactic Acidosis\n(from salbutamol)','High-dose nebulised/IV\nsalbutamol can cause\nlactic acidosis.\nMetabolic side effect.','Raised lactate on ABG.\nTachycardia. Agitation.\nLow bicarbonate.','Reduce salbutamol dose.\nMay mimic deteriorating\nasthma — check lactate\nin all severe attacks\non high-dose salbutamol.'],
-    ['Steroid Adverse\nEffects (long-term)','Long courses of oral\nprednisolone cause:\noseoporosis, diabetes,\ncataracts, skin thinning,\nadrenal suppression.','Signs develop over months.\nWeight gain. Bruising easily.\nHyperglycaemia. Bone pain.','Use minimum effective\nsteroid dose. Calcium\n+ vitamin D supplements.\nBone protection (bisphosphonate)\nif prolonged oral steroids.'],
+    ['Complication','How It Arises','How to Recognise','Management'],
+    ['RESPIRATORY FAILURE\nType 1 and Type 2','Type 1: V/Q mismatch in attack.\nType 2: Respiratory muscle\nfatigue in severe/life-threatening.','ABG: PaO2 < 8kPa (Type 1).\nPaCO2 > 6kPa + low pH (Type 2).\nType 2 = ITU.','High-flow O2 + all asthma drugs.\nITU for ventilatory support\nif Type 2. Early ITU involvement.'],
+    ['PNEUMOTHORAX','Alveolar rupture from high\nintrathoracic pressures during attack.\nOr from barotrauma if ventilated.','Sudden severe unilateral\nchest pain + worsening breathlessness.\nTracheal deviation (tension).','CXR confirms. Needle decompression\nfor tension. Chest drain for\nlarge pneumothorax.'],
+    ['STATUS ASTHMATICUS','Severe attack not responding\nto standard treatment\n> 1 hour of optimal therapy.','Any life-threatening feature\npersisting despite treatment.\nIncreasing exhaustion + CO2 retention.','ITU admission. IV salbutamol.\nMagnesium sulphate.\nConsider intubation\n(last resort — high risk).'],
+    ['MUCUS PLUGGING\n(Atelectasis)','Thick mucus plugs block airways\n→ collapse of lung segments\nbehind the block.','Lobar/segmental collapse on CXR.\nFever (secondary infection\nbehind plug possible).','Physiotherapy + hydration.\nHumidified oxygen.\nBronchoscopy for removal\nif severe collapse.'],
+    ['SIDE EFFECTS:\nLong-term oral steroids','Prednisolone for poorly controlled\nasthma causes systemic effects.','Osteoporosis. Diabetes. Hypertension.\nAdrenal suppression. Obesity.\nCataract. Easy bruising.','Minimum effective dose.\nBone protection: Ca+D3 + bisphosphonate.\nAnnual bone density (DEXA scan).\nPrevent with step-down biologics.'],
+    ['SIDE EFFECTS:\nInhaled steroids (ICS)','Local deposition in oropharynx.','Oral candidiasis (thrush).\nDysphonia (hoarse voice).','Spacer use. Rinse mouth after\nevery ICS dose — ALWAYS.\nAntifungal if thrush develops.'],
+    ['ABPA (as complication)','Repeated Aspergillus colonisation\n→ bronchiectasis + fibrosis.','Progressive breathlessness.\nBronchiectasis on CT chest.','High-dose oral prednisolone\n+ itraconazole antifungal.\nMonitor IgE and eosinophils.'],
 ]
-story.append(plain_table(comp_table,[CW*0.16,CW*0.26,CW*0.28,CW*0.3]))
-
-alert_box('TENSION PNEUMOTHORAX in asthma: Sudden severe unilateral breathlessness + absent breath sounds + tracheal deviation AWAY from the affected side. Do NOT wait for CXR. Immediate needle decompression: 2nd intercostal space, mid-clavicular line, above the rib (to avoid neurovascular bundle below the rib). This is immediately life-threatening.', story)
-
-memory_hook('ASTHMA COMPLICATIONS: Pneumothorax (sudden unilateral worsening). Respiratory failure (rising PaCO2). Mucus plug collapse. Hypokalaemia (salbutamol drives K+ into cells — check K+ in severe attacks). Lactic acidosis (paradoxically from high-dose salbutamol). Long-term steroids: osteoporosis + diabetes + adrenal suppression.', story)
+story.append(plain_table(comp_table,[CW*0.2,CW*0.22,CW*0.25,CW*0.33]))
+memory_hook('COMPLICATIONS: Rising PaCO2 in acute attack = respiratory failure = ITU. Sudden unilateral pain = pneumothorax. Oral thrush from ICS = rinse mouth. Long-term oral steroids = bone protection needed. ABPA = bronchiectasis. Mucus plugging = collapse on CXR = physio.', story)
 divider(story)
 
-# ── §10 SPECIAL SITUATIONS ───────────────────────────────────────────────────
-sec_header('Section 10: Special Situations in Asthma', story)
+# §10 Special Situations
+sec_header('Section 10: Asthma in Special Situations', story)
+professor_says('MRCP Part 2 and PACES loves special situations. Asthma in pregnancy. Asthma in children (different from adults). Occupational asthma. Nocturnal asthma. Know each one.', story)
 
-story.append(bp('<b>Asthma in Pregnancy:</b>'))
-for pt in [
-    'Asthma follows the "rule of thirds" in pregnancy: 1/3 improve, 1/3 stay same, 1/3 worsen.',
-    'Uncontrolled asthma in pregnancy is more dangerous than the medications. Poorly controlled asthma risks: preterm birth, low birth weight, pre-eclampsia.',
-    'ALL current asthma medications (salbutamol, ICS, prednisolone) are safe in pregnancy. Do NOT stop inhalers during pregnancy.',
-    'Monitor more frequently. Avoid NSAID-containing analgesics. Influenza vaccination is especially important in pregnancy.',
-]:
-    story.append(bp(f'• {pt}'))
-story.append(Spacer(1, 4))
-
-story.append(bp('<b>Aspirin/NSAID-Exacerbated Asthma (Samter\'s Triad):</b>'))
-for pt in [
-    'Classical triad: Asthma + Nasal polyps + NSAID sensitivity.',
-    'Affects ~10% of asthmatics. Mechanism: COX-1 blockade shunts arachidonic acid into 5-lipoxygenase pathway → massive leukotrienes (LTC4, LTD4, LTE4) → severe bronchoconstriction + nasal symptoms.',
-    'Reaction within 30–120 minutes of ingesting ANY NSAID. Can be life-threatening.',
-    'Management: Avoid ALL NSAIDs. Paracetamol safe (weak COX-1, safe up to 1g). Montelukast (leukotriene antagonist) excellent preventive therapy. Aspirin desensitisation in specialist centres (tolerance can be induced by starting at very low doses and gradually increasing under medical supervision).',
-]:
-    story.append(bp(f'• {pt}'))
-story.append(Spacer(1, 4))
-
-story.append(bp('<b>Occupational Asthma:</b>'))
-for pt in [
-    'Definition: asthma caused by exposure to an agent at work.',
-    'Key question: "Are your symptoms better on weekends and holidays and worse when you return to work?"',
-    'Common occupational sensitisers: Isocyanates (spray painting, foam manufacturing). Flour dust (bakers). Latex (healthcare). Colophony solder fumes (electronics). Animal proteins (lab workers, vets).',
-    'Management: Remove from exposure — complete removal gives best outcome. If cannot remove, use respiratory protection. SABA prophylaxis before exposure if mild. Step-up therapy. Compensation and occupational health involvement.',
-]:
-    story.append(bp(f'• {pt}'))
-story.append(Spacer(1, 4))
-
-story.append(bp('<b>Exercise-Induced Bronchoconstriction (EIB):</b>'))
-for pt in [
-    'Symptoms during or immediately after vigorous exercise. Peak at 5–10 minutes after exercise stops.',
-    'Mechanism: rapid breathing through mouth during exercise → cold, dry air → osmotic changes in airway cells → mast cell activation → bronchoconstriction.',
-    'Management: Warm-up exercises (reduce severity). Nose-breathing where possible. Short-acting salbutamol (400mcg) 15 minutes before exercise. Long-acting montelukast very effective prophylaxis for EIB.',
-    'Elite athletes: EIB is very common. Must use non-prohibited medications. SABA is allowed in sport (must declare). Some beta-2 agonists are banned at high doses.',
-]:
-    story.append(bp(f'• {pt}'))
-divider(story)
-
-# ── §11 PHARMACOLOGY ─────────────────────────────────────────────────────────
-sec_header('Section 11: Pharmacology — Every Drug Used in Asthma and Airway Disease', story)
-
-pharm_table = [
-    ['Drug / Class','Mechanism','Dose / Route','Key Points'],
-    ['Salbutamol\n(SABA — Short-Acting\nBeta-2 Agonist)','Stimulates beta-2 adrenergic\nreceptors on bronchiole smooth muscle.\nActivates adenylyl cyclase → cAMP\nrises → muscle RELAXES → airway opens.\nOnset: 5 minutes. Duration: 4 hours.','Inhaled MDI: 100mcg 1–2 puffs PRN.\nNebulised: 2.5–5mg every 20–30 min\nin attack. IV infusion: 5–10 mcg/min\nin life-threatening attack.','Beta-2 selectivity — minimal\nbeta-1 cardiac effects at standard doses.\nSide effects: tremor, tachycardia,\nhypokalaemia, lactic acidosis (high dose).\nNEVER use SABA alone without ICS\nin persistent asthma (masking).'],
-    ['Ipratropium\n(SAMA — Short-Acting\nMuscarinic Antagonist)','Blocks M3 muscarinic receptors\non bronchial smooth muscle.\nBlocks the vagus nerve\'s bronchoconstrictor\neffect. Also reduces mucus secretion.\nOnset: 15 min. Duration: 6 hours.','Nebulised 500mcg every 4–6 hours.\nAdded to salbutamol in acute severe\nand life-threatening asthma.','Added to salbutamol in:\nacute severe and\nlife-threatening attacks.\nNot for routine long-term\nasthma maintenance.\nBeneficial mainly in\nacute severe asthma.'],
-    ['Beclometasone /\nBudesonide / Fluticasone\n(ICS — Inhaled\nCorticosteroids)','Binds intracellular glucocorticoid\nreceptors in airway cells.\nReduces transcription of\npro-inflammatory genes (IL-4, IL-5,\nIL-13, eotaxin).\nReduces eosinophil recruitment\nand mast cell numbers in airway.','Beclometasone:\nLow dose: 100–400 mcg/day.\nHigh dose: 800–2000 mcg/day.\nTwice daily dosing.','Most important preventer drug.\nStart at step 2 in all\npersistent asthma.\nSide effects: oral candidiasis\n(thrush) — rinse mouth after.\nHoarse voice. Systemic effects\n(growth suppression in children)\nat high doses.'],
-    ['Salmeterol / Formoterol\n(LABA — Long-Acting\nBeta-2 Agonist)','Same mechanism as salbutamol\nbut acts for 12 hours.\nFormoterol: onset in 5 min\n(can be used as rescue in SMART\nregimen with ICS/formoterol).','Salmeterol 50mcg twice daily.\nFormoterol 6–12 mcg twice daily.\nAlways combined with ICS.','NEVER use LABA without ICS\n(risk of asthma death from masking).\nCombined inhalers: Seretide\n(salmeterol+fluticasone) or\nSymbicort (formoterol+budesonide).'],
-    ['Montelukast\n(LTRA — Leukotriene\nReceptor Antagonist)','Blocks cysteinyl leukotriene\nreceptors (CysLT1) on airway cells.\nLeukotrienes (LTC4, LTD4, LTE4)\nare the main mediators of both\nbronchospasm and inflammation\nin asthma.','10mg oral once daily (adults).\n5mg chewable tablet\n(children 6–14 years).','Add-on at step 4.\nExcellent for:\nNSAID/aspirin-exacerbated asthma.\nExercise-induced bronchoconstriction.\nAllergic rhinitis comorbidity.\nSide effects: rarely — neuropsychiatric\n(nightmares, mood changes). Alert patient.'],
-    ['Theophylline\n(Aminophylline IV\n= theophylline salt)','Phosphodiesterase inhibitor.\nRaises cAMP in smooth muscle\n→ bronchodilation.\nAlso: adenosine receptor\nantagonism. Anti-inflammatory\neffects at low doses.','Oral theophylline: 200–400mg\ntwice daily (modified release).\nIV aminophylline: loading dose\n5mg/kg over 20 min THEN\n0.5mg/kg/hr infusion. ONLY\nif not already on theophylline.','Narrow therapeutic window:\nTherapeutic level: 10–20 mg/L.\nToxic > 20 mg/L.\nToxicity: nausea, vomiting,\nseizures, arrhythmias.\nMonitor levels.\nMany drug interactions (erythromycin,\nciprofloxacin, cimetidine increase levels).'],
-    ['Magnesium Sulphate\nIV','Calcium channel blocker in smooth\nmuscle. Blocks Ca2+ entry into\nbronchiole smooth muscle cells.\nResult: bronchiole relaxes,\nairway opens.','1.2–2g IV over 20 minutes.\nSingle dose in acute severe\nor life-threatening asthma.\nAlso available nebulised.','Given once in acute attack.\nEvidence from BTS guidelines.\nSide effects: flushing, hypotension\n(rare at this dose). Safe at these doses.\nDo NOT repeat dose routinely.'],
-    ['Prednisolone\n(oral steroids)','Systemic corticosteroid.\nSame mechanism as ICS\nbut systemic effect.\nPowerful anti-inflammatory.','Acute attack: 40mg once daily\nfor 5 days (adults).\nChronic: lowest effective dose.\nIV hydrocortisone 100mg in\nsevere attack (cannot swallow).','5-day course: no need\nto taper (short course).\nLonger courses: wean gradually\n(suppress adrenal cortex).\nSide effects of long-term:\noseoporosis, diabetes, hypertension,\ncataracts, adrenal suppression.'],
-    ['Adrenaline\n(Epinephrine)','Alpha-1: vasoconstriction\n(reduces laryngeal oedema).\nBeta-2: bronchodilation.\nBeta-1: cardiac stimulation.','Anaphylaxis: 0.5mg IM\n(0.5ml of 1:1000).\ninto outer thigh.\nEpiPen: 0.3mg auto-injector.','FIRST-LINE for anaphylaxis.\nIM preferred over IV\n(IV causes dangerous arrhythmias\nunless cardiac arrest).\nRepeat after 5 minutes\nif no response.'],
-    ['Icatibant\n(Firazyr)','Bradykinin B2 receptor\nantagonist.\nBlocks bradykinin\'s effect\non blood vessel walls.\nPrevents oedema formation.','30mg SC injection.\nRepeat after 6 hours\nif needed (max 3 doses\nin 24 hours).','SPECIFIC for HAE acute attacks\nand ACE inhibitor-induced angioedema.\nNot useful in histamine-mediated\nangioedema (anaphylaxis).'],
-    ['C1-INH concentrate\n(Berinert, Ruconest)','Replaces the missing\nC1-esterase inhibitor\nprotein directly.\nRestores control of\nbradykinin generation.','Berinert: 20 units/kg IV.\nRuconest (recombinant): 50 units/kg IV.','First-line for HAE acute attacks.\nAlso used as prophylaxis before\nplanned procedures or surgery.\nSafe in pregnancy.'],
-    ['Omeprazole / PPIs\n(Proton Pump Inhibitors)','Irreversibly inhibits\nH+/K+-ATPase pump\nin stomach parietal cells.\nReduces gastric acid\nproduction by 95%.','20–40mg oral once daily\nbefore morning meal.','Treat GERD contributing to\nasthma/laryngospasm.\nFew side effects at standard doses.\nLong-term: low magnesium, low B12,\nincreased C. difficile risk.'],
+special_table = [
+    ['Special Situation','Key Differences','Management Principles','MRCP Key Points'],
+    ['ASTHMA IN\nPREGNANCY','One-third improve.\nOne-third stay same.\nOne-third worsen.\nFetal hypoxia from uncontrolled\nasthma is MORE dangerous\nthan ICS drugs.','CONTINUE all asthma medications.\nSAFE: Salbutamol, ICS, prednisolone,\nmontelukast, magnesium.\nSAFE: All step 1-4 drugs.\nAVOID: No strong evidence for\nbiotics in pregnancy — specialist.','Most common question:\n"Is it safe to use inhaler in pregnancy?"\nANSWER: YES. Uncontrolled asthma\nharms baby more than inhalers.\nAcute severe asthma in pregnancy\n= obstetric emergency. Admit all.'],
+    ['EXERCISE-INDUCED\nASSUMPTION (EIA)','Bronchoconstriction 5-10 min\nafter exercise. Spontaneously\nresolves 30-60 min later.','SABA 15 min before exercise.\nMontelukast VERY effective.\nWarming up helps.\nCold weather — cover mouth/nose.','Diagnosis: 15% fall in FEV1\nor PEFR after standard\nexercise challenge test.\nAthletes: ensure medications\npermitted (most ICS and SABA\nare permitted in sport).'],
+    ['NOCTURNAL ASTHMA','Cortisol lowest at 4am.\nAirway inflammation peaks at night.\nAirway cooling at night.','Long-acting beta-agonist (LABA)\nas part of ICS+LABA combination.\nCheck for GERD (nocturnal reflux).\nCheck dust mite in pillows/mattress.','Classic MRCP: patient wakes at 4am\ncoughing and wheezing = asthma.\n(COPD does not do this.)\nDiary entries show a.m. dip\nin PEFR.'],
+    ['OCCUPATIONAL\nASSUMPTION (OA)','Starts > age 17 at work.\nSymptoms worse at work,\nbetter on holidays/weekends.','Remove from exposure = best treatment.\nTemporary improvement: ICS + SABA.\nReport to occupational health.\nLegal rights: reasonable\nadjustments by employer.','Most common causes: isocyanates,\nflour, latex, colophony.\nINVESTIGATION: serial PEFR (4 times/day\nat work vs home) for 4 weeks.\n20% variation at work = diagnostic.'],
+    ['DIFFICULT/SEVERE\nREFRACTORY ASTHMA','Does not respond to\nstep 3-4 treatment.\nRequires specialist review.','Check: correct diagnosis?\nCheck: adherence (blood eosinophil\ncount helps if on ICS).\nCheck: inhaler technique.\nCheck: psychosocial factors.','4 D checklist:\nDiagnosis (correct?)\nDrug (right drug?)\nDelivery (right inhaler technique?)\nDriving factors (comorbidities?)\nOnly then consider biologics.'],
 ]
-story.append(plain_table(pharm_table,[CW*0.16,CW*0.24,CW*0.18,CW*0.42]))
+story.append(plain_table(special_table,[CW*0.18,CW*0.27,CW*0.27,CW*0.28]))
+memory_hook('SPECIAL SITUATIONS: Pregnancy = SAFE to use all inhalers. Exercise-induced = salbutamol before + montelukast. Nocturnal = LABA + GERD check + dust mite. Occupational = serial PEFR at work vs home. Refractory = 4 Ds: Diagnosis, Drug, Delivery, Driving factors.', story)
 divider(story)
 
-# ── §12 MRCP EXAM TRIGGERS ───────────────────────────────────────────────────
-sec_header('Section 12: MRCP Exam Triggers — High-Yield Clinical Scenarios', story)
+# §11 Pharmacology
+sec_header('Section 11: Pharmacology of Asthma Drugs — MRCP Detail', story)
+professor_says('Know the mechanism, class, and side effects of every asthma drug. MRCP Part 1 tests mechanism. Part 2 tests choice and monitoring. PACES tests what you tell the patient.', story)
+
+pharma_table = [
+    ['Drug / Class','Mechanism','Key Side Effects','MRCP Prescribing Points'],
+    ['SALBUTAMOL\n(Ventolin)\nShort-acting beta-2 agonist (SABA)','Agonist at beta-2 adrenoceptors\non bronchial smooth muscle.\nActivates adenylyl cyclase →\ncAMP → smooth muscle relaxation.','Tremor (most common).\nPalpitations + tachycardia.\nHypokalaemia (K+ shifts into cells).\nHyperglycaemia (diabetics).','Onset: 1-3 min. Peak: 15 min.\nDuration: 4-6h.\nNebulised dose: 2.5-5mg.\nInhaled via spacer: 4-8 puffs.\nDOSE-DOSE: hypokalaemia — check K+\nin severe attacks on frequent nebs.'],
+    ['BECLOMETASONE /\nFLUTICASONE\nInhaled corticosteroid (ICS)','Binds glucocorticoid receptor\n→ reduces transcription of\npro-inflammatory cytokines.\nReduces eosinophilic inflammation.','Local: oral candidiasis, dysphonia.\nSystemic (high dose): adrenal\nsuppression, osteoporosis, skin\nthinning (less than oral).','ALWAYS rinse mouth after use.\nSpacer reduces oropharyngeal\ndeposition. Beclometasone 400mcg\nvia DPI = 200mcg via MDI with\nspacer (extra-fine particles more\nefficient). Check device type.'],
+    ['SALMETEROL /\nFORMOTEROL\nLong-acting beta-2 agonist (LABA)','Same as salbutamol but longer\nchain. Duration 12h (salmeterol)\nor 12h (formoterol — faster onset).','Same as salbutamol but sustained.\nHypokalaemia. Tremor.\nBLACK BOX: increased asthma\ndeath if used WITHOUT ICS.','MUST ALWAYS be with ICS.\nNEVER prescribe LABA alone in asthma.\nFormoterol: faster onset — can\nbe used as SMART therapy\n(maintenance + reliever in same device).'],
+    ['IPRATROPIUM\n(Atrovent)\nShort-acting muscarinic antagonist (SAMA)','Blocks M3 muscarinic receptors\non smooth muscle → reduces\nbronchospasm from vagal tone.\nAlso reduces secretions.','Dry mouth.\nUrinary retention (elderly men).\nConstipation.\nBlurred vision (eye exposure).','Used in acute severe attack\n(added to nebulised salbutamol).\nNOT first-line for chronic asthma\n(used in COPD). Duration 4-6h.\nIf accidentally in eyes: acute\nangle closure glaucoma risk.'],
+    ['MONTELUKAST\n(Singulair)\nLeukotriene receptor antagonist (LTRA)','Blocks CysLT1 receptor.\nPrevents leukotrienes from\ncausing bronchoconstriction\n+ mucus + inflammation.','Neuropsychiatric side effects\n(FDA black box 2020):\ndepression, anxiety, nightmares,\naggression, suicidality.','10mg once at night (nocte).\nExcellent for: exercise-induced,\nSamter\'s triad, allergic rhinitis\n+ asthma, ABPA adjunct.\nWARN patients about mood changes.\nCan be used in pregnancy.'],
+    ['THEOPHYLLINE\n(methylxanthine)','Phosphodiesterase inhibitor →\nincreases cAMP → bronchodilation.\nAlso adenosine receptor blockade.','NARROW THERAPEUTIC INDEX.\nNausea, vomiting, palpitations.\nArrhythmias + seizures in overdose.\nMultiple drug interactions.','Therapeutic range: 10-20 mg/L.\nReduced metabolism (higher levels):\nerythromycin, ciprofloxacin,\ncimetidine, heart failure, liver disease.\nMonitor blood levels. OLD drug — less\nused but still MRCP favourite for toxicity.'],
+    ['PREDNISOLONE\n(oral steroid)','Systemic glucocorticoid.\nBroadly anti-inflammatory:\nreduces all cytokines, T-cells,\neosinophils, mast cells.','Short course: relatively safe.\nLong-term: Cushing syndrome,\nosteoporosis, diabetes, hypertension,\nadrenal suppression, peptic ulcer.','Acute severe: 40-50mg for 5-7 days\n(no taper needed for short course).\nLong-term: lowest effective dose.\nGive: PPI (gastroprotection) +\nCa + D3 + bisphosphonate (bone\nprotection) if > 3 months.'],
+    ['OMALIZUMAB /\nMEPOLIZUMAB\n(biologic therapy)','Anti-IgE (omalizumab) or\nAnti-IL-5/IL-5R (mepolizumab,\nbenralizumab) → reduces\neosinophilic inflammation cascade.','Injection site reactions.\nAnaphylaxis (omalizumab — rare\nbut observe 2h after first 3 doses).\nHeadache, fatigue.','Specialist-only prescribing.\nCriteria: severe uncontrolled asthma\n+ high IgE (omalizumab) OR\neosinophils > 0.3 (anti-IL-5).\nGiven at home by patient (SC injection)\nafter training. NICE guidelines apply.'],
+]
+story.append(plain_table(pharma_table,[CW*0.17,CW*0.22,CW*0.26,CW*0.35]))
+info_box('<b>Hypokalaemia in acute severe asthma:</b> Salbutamol drives potassium INTO cells via Na/K ATPase activation. In high-dose/continuous nebulised salbutamol + corticosteroids + hypoxia, serum K+ can fall dangerously. CHECK POTASSIUM in every severe acute attack. If K+ < 3.0 mmol/L, replace IV. This is a common MRCP scenario.', story)
+memory_hook('DRUG FACTS: Salbutamol = tremor + tachycardia + hypokalaemia. ICS = rinse mouth (thrush). LABA NEVER without ICS. Montelukast = neuropsychiatric warning. Theophylline = narrow window + drug interactions. Mg = 2g IV. Prednisolone long-term = bone protection. Omalizumab = anaphylaxis risk → observe 2h.', story)
+divider(story)
+
+# §12 MRCP Exam Triggers
+sec_header('Section 12: Top 12 MRCP Exam Trigger Scenarios', story)
+professor_says('These are the most commonly tested clinical scenarios in MRCP Parts 1, 2, and PACES. Know each one by heart.', story)
 
 triggers = [
-    ['#','Scenario','Key Teaching Point','Answer'],
-    ['1','A 23-year-old woman with known asthma presents with wheeze. She uses her salbutamol inhaler 20 times/day. Her PEFR is 38% of predicted. She can speak single words only.',
-     'Acute severe or life-threatening asthma — severity classification.',
-     'PEFR 33–50% = acute severe. Cannot speak = approaching life-threatening. Give: continuous salbutamol neb + ipratropium neb + hydrocortisone 100mg IV + magnesium sulphate 2g IV over 20 min + oxygen + CXR.'],
-    ['2','A patient with acute severe asthma does not improve after 3 salbutamol nebulisers and IV hydrocortisone. What is the next step?',
-     'Add-on therapy in acute severe asthma — magnesium.',
-     'IV magnesium sulphate 1.2–2g over 20 minutes. This is first-line add-on in BTS guidelines for acute severe asthma not responding to SABA + steroids.'],
-    ['3','A 24-year-old woman presents with episodic breathlessness and stridor. Spirometry is normal between attacks. Salbutamol and steroids do not help.',
-     'Vocal cord dysfunction (VCD) — classic presentation.',
-     'VCD — diagnosed by laryngoscopy during attack showing paradoxical adduction of cords on inspiration. Normal FeNO. Treat: speech therapy. Refer to ENT/respiratory.'],
-    ['4','A 26-year-old woman presents with recurrent facial and lip swelling, abdominal colic, and one episode of throat swelling. No urticaria. Her mother has the same condition.',
-     'Hereditary Angioedema (HAE) — key differentiators.',
-     'HAE: No urticaria (distinguishes from allergic angioedema). Family history. Abdominal colic. Check: C4 (will be LOW). C1-INH level and function. Adrenaline does NOT work. Treat acute episode with C1-INH concentrate or icatibant.'],
-    ['5','A patient is on ramipril for hypertension. She now presents with sudden swelling of her lips and tongue. No rash. No breathlessness.',
-     'ACE inhibitor-induced angioedema — bradykinin mechanism.',
-     'ACE inhibitors block breakdown of bradykinin → bradykinin accumulates → angioedema. No urticaria. Can occur years after starting the drug. STOP the ACE inhibitor immediately. Switch to ARB with caution (10% cross-reactivity) or alternative antihypertensive. Acute: icatibant or C1-INH concentrate.'],
-    ['6','A 25-year-old asthmatic woman is given ibuprofen by her GP for knee pain. 45 minutes later she develops severe wheeze requiring hospital admission.',
-     'Aspirin-exacerbated respiratory disease (AERD) / Samter\'s Triad.',
-     'NSAIDs contraindicated. Check for nasal polyps (Samter\'s triad). Prescribe: paracetamol for pain. Start montelukast. Refer to specialist for aspirin desensitisation if needed.'],
-    ['7','A 22-year-old asthmatic has total serum IgE of 2400 IU/mL, positive Aspergillus IgE, sputum eosinophilia, and central bronchiectasis on CT.',
-     'ABPA — diagnostic criteria.',
-     'ABPA. Treatment: oral prednisolone (0.5mg/kg for 2 weeks then taper) + itraconazole 200mg twice daily for 4–6 months. Monitor: total IgE — should fall. Rising IgE = relapse.'],
-    ['8','An asthma patient on step 3 (ICS + LABA) still has frequent exacerbations. Blood eosinophils = 800 cells/uL. Total IgE = 450 IU/mL.',
-     'Biologic therapy selection — eosinophilic asthma.',
-     'Step 5 biologic candidate. High eosinophils = mepolizumab or benralizumab (anti-IL-5 / anti-IL-5Ra). If sensitised to perennial allergen also = omalizumab (anti-IgE). Refer to severe asthma service.'],
-    ['9','An asthma patient has PEFR 29% and rising PaCO2 of 5.8 kPa (normal). She looks exhausted.',
-     'Rising PaCO2 in asthma = DANGER sign.',
-     'Normal PaCO2 in a tachypnoeic asthma patient = patient is tiring. Rising PaCO2 = impending respiratory failure. CALL ICU immediately. Prepare for intubation. Give magnesium sulphate, IV salbutamol infusion.'],
-    ['10','A young woman wakes from sleep at 2am, gasping and unable to breathe for about 30 seconds. Her chest exam and peak flow are normal in clinic.',
-     'Laryngospasm from GERD — nocturnal pattern.',
-     'GERD-induced laryngospasm. Nocturnal attacks as acid refluxes when lying flat. Investigate: 24-hour pH monitoring. Empirical trial: omeprazole 40mg daily. Lifestyle: head of bed up, no food 3 hours before sleep.'],
-    ['11','A newly diagnosed asthmatic is started on salbutamol only (PRN). She comes back 6 months later with frequent attacks.',
-     'Undertreated asthma — importance of ICS preventer.',
-     'Salbutamol alone (SABA) does not treat the underlying inflammation. She needs step 2 treatment: add ICS (beclometasone 200–400 mcg twice daily). Explain difference between reliever (salbutamol) and preventer (ICS).'],
-    ['12','A patient with severe asthma is started on salmeterol (LABA) alone without ICS.',
-     'LABA without ICS = dangerous.',
-     'LABA monotherapy in asthma is CONTRAINDICATED. It can mask worsening asthma and increase asthma deaths. LABA must ALWAYS be combined with ICS. Replace with combination inhaler (Seretide or Symbicort).'],
+    ['#','MRCP Scenario','Answer / Key Point'],
+    ['1','Young woman, episodic wheeze and cough, worse at night, PEFR variable, atopic history.\nWhat confirms diagnosis?','FEV1/FVC < 0.7 + > 12% + > 200mL reversibility after salbutamol. Or PEFR diurnal variation > 20%.'],
+    ['2','Asthma patient developing severe attack. PEFR 28% best. SpO2 88%. Silent chest.\nWhat is the immediate next step?','Life-threatening asthma. Oxygen + nebulised salbutamol + ipratropium + IV hydrocortisone 100mg + IV magnesium 2g. Call ITU.'],
+    ['3','Asthmatic has PaCO2 5.8 kPa during severe attack. Pulse 110. Previously PaCO2 was low.\nWhat does this mean?','DANGER — rising PaCO2 = Type 2 respiratory failure = patient tiring = call ITU immediately for ventilatory support.'],
+    ['4','Asthmatic on step 2 (ICS). Well but now needing SABA > 4x/week. Correct action?','Step up: add LABA to ICS. Prescribe ICS+LABA combination inhaler (Seretide or Symbicort). NEVER prescribe LABA alone.'],
+    ['5','Young woman with recurrent breathlessness + wheeze not responding to salbutamol.\nSpiometry normal. FeNO 18 ppb. What is the likely diagnosis?','Vocal cord dysfunction (VCD). Spirometry normal (flow-volume loop shows variable extrathoracic obstruction). Laryngoscopy confirms. Treat with speech therapy.'],
+    ['6','Patient on NSAIDs, nasal polyps, aspirin sensitivity, and severe asthma. What syndrome?','Samter\'s Triad (Aspirin-Exacerbated Respiratory Disease / AERD). Stop ALL NSAIDs. Montelukast is key. Paracetamol is safe.'],
+    ['7','Asthmatic with very high IgE (> 1000), central bronchiectasis, Aspergillus-specific IgE positive.\nDiagnosis and treatment?','ABPA (Allergic Bronchopulmonary Aspergillosis). Oral prednisolone + itraconazole. Monitor IgE levels and eosinophils.'],
+    ['8','Patient with recurrent facial/lip swelling + laryngeal oedema. C4 low. C1-esterase inhibitor low.\nDiagnosis and acute treatment?','Hereditary Angioedema (HAE). NOT allergic. Adrenaline does NOT work. Treat with C1-INH concentrate or icatibant (bradykinin B2 receptor blocker).'],
+    ['9','Asthmatic athlete uses salbutamol frequently. Serum K+ is 2.8 mmol/L. Why?','Salbutamol causes hypokalaemia — drives K+ into cells via Na/K ATPase. Replace potassium IV. Check electrolytes in all acute severe asthma.'],
+    ['10','Theophylline patient presents with vomiting + arrhythmia. Just started erythromycin. Why?','Erythromycin inhibits CYP1A2 → reduced theophylline metabolism → toxicity. Check theophylline blood level. Normal range 10-20 mg/L.'],
+    ['11','Pregnant asthmatic asks if she should stop her ICS. Your advice?','CONTINUE ICS and all asthma medications. Uncontrolled asthma causes fetal hypoxia — far more dangerous than ICS. All step 1-4 drugs are safe in pregnancy.'],
+    ['12','Patient with recurrent anaphylaxis after eating, urticaria, wheeze. Tryptase raised at 1h.\nWhat confirms anaphylaxis?','Raised serum tryptase (taken within 1-3h). Also: baseline tryptase at 24h (must be lower). Management: epinephrine 0.5mg IM, antihistamine, steroid. Investigate trigger with RAST.'],
 ]
-story.append(plain_table(triggers,[CW*0.04,CW*0.26,CW*0.22,CW*0.48]))
+story.append(plain_table(triggers,[CW*0.04, CW*0.41, CW*0.55]))
+memory_hook('TOP TRIGGERS: PaCO2 rising = ITU. Silent chest = life-threatening. VCD = laryngoscopy + speech therapy. HAE = C4 low + icatibant (NOT adrenaline). Samter = NSAIDs + nasal polyps + asthma. ABPA = IgE > 1000 + bronchiectasis. Theophylline + erythromycin = toxicity. Pregnancy = CONTINUE inhalers.', story)
 divider(story)
 
-# ── §13 PACES AND MINIMAL RESOURCES ──────────────────────────────────────────
-sec_header('Section 13: PACES Guide + Minimal Resources Management', story)
+# §13 PACES + Minimal Resources
+sec_header('Section 13: PACES Examination Guide + Minimal Resources Summary', story)
+professor_says('PACES tests your examination skill, communication, and clinical reasoning. For asthma, the most likely stations are: Respiratory examination (Station 1), History Taking (Station 2), and Communication (Station 4). Know the full structured approach.', story)
 
-story.append(bp('<b>PACES — History Station: Recurrent Breathlessness in Young Adult</b>'))
-for pt in [
-    '<b>Open question:</b> "Can you tell me about your breathing problem in your own words?"',
-    '<b>Onset:</b> "When did this first start? Did you have anything like this as a child?"',
-    '<b>Character:</b> "When you get breathless, do you also wheeze? Do you hear a whistling from your chest or a noise from your throat?"',
-    '<b>Upper vs lower:</b> "The noise — is it when you breathe IN or breathe OUT?" (In = upper = VCD/laryngeal. Out = lower = asthma/bronchitis.)',
-    '<b>Triggers:</b> "Does anything bring it on? Pets, dust, cold air, exercise, perfumes, stress, certain foods? Any medications (NSAIDs, beta-blockers, ACE inhibitors)?"',
-    '<b>Time pattern:</b> "When in the day is it worst? Is it worse at night? Worse in the mornings? Worse at work than at weekends?"',
-    '<b>Treatment response:</b> "Does the reliever inhaler (salbutamol) help? How much? How quickly?" (If no response to salbutamol → consider VCD, HAE.)',
-    '<b>Atopic history:</b> "Do you have hayfever? Eczema? Any food allergies? Any previous anaphylaxis?"',
-    '<b>Swelling:</b> "Have you ever had swelling of your lips, tongue, or throat? Any abdominal cramps during attacks? Any skin hives/rash?" (Rash + swelling = anaphylaxis. Swelling without rash = HAE.)',
-    '<b>Acid reflux:</b> "Do you get heartburn? Does it wake you at night? Do you sometimes wake up unable to breathe for a minute?"',
-    '<b>Menstrual link:</b> "Do attacks link to your menstrual cycle? Worse just before your period?" (Premenstrual asthma.)',
-    '<b>Family history:</b> "Does anyone in your family have asthma, severe allergies, or episodes of facial swelling?" (HAE is autosomal dominant.)',
-]:
-    story.append(bp(f'• {pt}'))
-story.append(Spacer(1, 5))
-
-story.append(bp('<b>PACES — Examination: The Breathless Young Patient</b>'))
-for pt in [
-    '<b>End of bed:</b> Distress? Position (tripod = severe). Using neck muscles? Cyanosed? Able to speak?',
-    '<b>Vital signs:</b> RR, HR, BP, SpO2, PEFR (most important bedside test in asthma).',
-    '<b>Hands:</b> Tremor (salbutamol side effect). Clubbing absent in asthma (clubbing = consider bronchiectasis). CRT.',
-    '<b>Face:</b> Flushed (early attack). Pursed lip breathing. Nasal flaring. Nasal polyps (Samter\'s). Facial/lip swelling (angioedema). Urticaria on skin.',
-    '<b>Neck:</b> Trachea central (deviation = pneumothorax). Accessory muscle use (sternocleidomastoid). JVP raised in tension pneumothorax.',
-    '<b>Chest inspection:</b> Barrel-shaped (hyperinflation). Intercostal recession. Harrison\'s sulcus (rib deformity in chronic childhood asthma — ribs pulled in at attachment to diaphragm).',
-    '<b>Percussion:</b> Hyperresonant bilaterally (hyperinflation). Unilateral hyper-resonance = pneumothorax.',
-    '<b>Auscultation:</b> Bilateral expiratory wheeze (asthma). High-pitched inspiratory stridor (upper airway). Monophonic wheeze (single pitch = fixed obstruction = tumour or foreign body). Polyphonic wheeze (multiple pitches = asthma). Silent chest = life-threatening.',
-    '<b>Abdominal:</b> Not typically affected in asthma. Tenderness + bloating in HAE (abdominal colic attack).',
-]:
-    story.append(bp(f'• {pt}'))
-story.append(Spacer(1, 5))
-
-story.append(bp('<b>PACES Presentation Template:</b>'))
-story.append(bp('"This 23-year-old woman presents with recurrent wheeze, breathlessness, and cough since childhood. On examination she is mildly breathless, using accessory muscles. Respiratory rate is 26. SpO2 is 95% on air. Peak flow is 58% of predicted. There is bilateral expiratory wheeze on auscultation. The lungs are hyperresonant to percussion. The trachea is central. In summary, this picture is consistent with an acute exacerbation of asthma. I would assess severity, initiate salbutamol nebulisers and oral prednisolone, request a chest X-ray to exclude pneumothorax, and arrange admission for monitoring."'))
-story.append(Spacer(1, 5))
-
-story.append(bp('<b>Minimal Resources Management:</b>'))
-minimal_table = [
-    ['Step','Action','Minimum Resources'],
-    ['1. Confirm asthma','Peak flow (PEFR) measurement.\nCheck it before and after salbutamol.\n>20% improvement = reversible obstruction.','Portable peak flow meter.'],
-    ['2. Oxygen','Nasal prongs 4–6 L/min\nor simple face mask.','Oxygen cylinder + mask.'],
-    ['3. Salbutamol','Via MDI (pressurised inhaler)\n+ spacer device.\n4–10 puffs (400–1000 mcg) every\n20 minutes — as effective as nebuliser.','MDI inhaler + spacer.\nSpacers can be improvised from\na plastic bottle with a hole.'],
-    ['4. Steroids','Oral prednisolone 40mg.\nIf cannot swallow: IV hydrocortisone 100mg.','Tablets. Injectable preparation.'],
-    ['5. Assess response','PEFR again after 15–30 minutes.\nImproving = continue. Worsening = escalate.','Peak flow meter. Watch.'],
-    ['6. Refer','All acute severe attacks:\nrefer to hospital with monitoring.','Phone. Transport.'],
-    ['7. Discharge plan','Written Asthma Action Plan.\nInhaler technique check.\nSpare salbutamol. Follow-up in 48h.','Paper. Inhaler.'],
+story.append(bp('<b>PACES Station 1 — Respiratory Examination: What to Look For in Asthma:</b>'))
+paces_exam = [
+    ['Examination Step','What to Look For','What It Means in Asthma'],
+    ['General inspection\n(first 10 seconds)','Sitting forward, tripod position.\nAccessory muscles visible.\nSpeaking in short phrases.\nInhaler or spacer nearby.','Forward lean = maximises lung volume.\nAccessory muscles = severe.\nCannot complete sentences = acute severe.'],
+    ['Respiratory rate','Count for 30 seconds x2.\nNormal: 12-16/min.','> 25/min = acute severe asthma feature.\n> 30/min = critical.'],
+    ['Peak flow (PEFR)','Ask patient to perform PEFR\n(if not in acute distress).\nCompare to predicted or best.','< 50% = severe. < 33% = life-threatening.\nCentral bedside diagnostic tool.'],
+    ['Chest expansion','Both hands on chest wall.\nCompare both sides.','Equal but reduced globally in\nacute attack (both sides narrow equally).'],
+    ['Percussion','Resonant or hyper-resonant.','Hyper-resonant = air trapping (severe).\nDullness = consolidation or effusion\n(not asthma — suggests another cause).'],
+    ['Auscultation','Listen anteriorly + posteriorly\nall zones. Listen in expiration.','Expiratory wheeze — polyphonic\n(many pitches) in asthma.\nSilent chest = no air moving = emergency.'],
+    ['Look for complications','Finger clubbing (NOT asthma).\nPursed lip breathing.\nBarrel chest (COPD).','Clubbing = NOT asthma → check for bronchiectasis\nor lung cancer. Barrel chest → COPD.\nIf clubbing present, reconsider diagnosis.'],
 ]
-story.append(plain_table(minimal_table,[CW*0.1,CW*0.55,CW*0.35]))
+story.append(plain_table(paces_exam,[CW*0.22,CW*0.35,CW*0.43]))
 
-memory_hook('PACES: PEFR is the most important bedside test in asthma. Always state it. Wheeze = lower airway. Stridor = upper airway. Silent chest = EMERGENCY. Always ask about triggers, atopy family history, and response to salbutamol. For VCD: ask "does the noise happen breathing IN or OUT?"', story)
+story.append(Spacer(1, 8))
+story.append(bp('<b>PACES Station 2 — History Taking: Structured Asthma History:</b>'))
+for pt in [
+    '<b>Opening:</b> "Tell me about your breathing problems from the beginning."',
+    '<b>SOCRATES for dyspnoea:</b> Site (chest tightness) — Onset (sudden, gradual?) — Character (wheeze, cough, tight?) — Radiation — Alleviating/Aggravating — Timing (night, exercise, work) — Severity (PEFR diary, ED visits)',
+    '<b>Key questions:</b> Any trigger? Better on holidays? On NSAIDs or beta-blockers? Have you had this since childhood? Any nasal polyps? Family history of asthma/eczema/hayfever?',
+    '<b>Check inhaler use:</b> How do you use your inhaler? Do you use a spacer? Do you rinse your mouth after? When did you last take it today?',
+    '<b>Impact on life:</b> Work? Exercise? Sleep? School/study? Sport? Days off? Recent hospital admissions?',
+    '<b>Systems review:</b> Heartburn or reflux (GERD)? Snoring or nasal drip (rhinitis)? Eczema or skin problems?',
+]:
+    story.append(bp(f'  • {pt}'))
+story.append(Spacer(1, 8))
+
+story.append(bp('<b>PACES Communication — Explaining Asthma and Inhalers to Patient:</b>'))
+for pt in [
+    '"Your breathing problem is called asthma. Asthma means the breathing tubes in your lungs are swollen and sometimes squeeze tight."',
+    '"The blue inhaler (salbutamol) opens the tubes quickly — use it when you feel tight or wheezy. It works in minutes."',
+    '"The brown/orange inhaler (your steroid preventer) reduces the swelling — you must use it EVERY DAY even when you feel well. It does NOT open the tubes immediately — it prevents attacks."',
+    '"ALWAYS rinse your mouth with water after the brown inhaler to prevent a fungal infection in your mouth."',
+    '"Your triggers are: [cats / exercise / cold air / dust]. Avoiding these is as important as your medication."',
+    '"If you feel very breathless, use 4-10 puffs of your blue inhaler with a spacer. If not better in 10 minutes, call 999 (emergency)."',
+]:
+    story.append(bp(f'  • {pt}'))
+story.append(Spacer(1, 8))
+
+# Minimal resources box
+minimal_rows = [
+    [Paragraph('<b>MINIMAL RESOURCES SUMMARY — Managing Asthma With Limited Equipment</b>', sAlert)],
+    [Paragraph('If only ONE drug available: Salbutamol MDI via homemade spacer (plastic bottle with hole). 10 puffs = similar to nebuliser.', sBody)],
+    [Paragraph('If no nebuliser: MDI + spacer. 4-8 puffs every 20 min. Just as effective as nebuliser in moderate attack if good technique.', sBody)],
+    [Paragraph('If no spirometer: Serial PEFR with handheld meter is sufficient for diagnosis (diurnal variation > 20%).', sBody)],
+    [Paragraph('If no IV access: Oral prednisolone 40-50mg is as effective as IV hydrocortisone for most acute attacks.', sBody)],
+    [Paragraph('If no pulse oximeter: Respiratory rate + accessory muscle use + speech + PEFR = proxy severity markers.', sBody)],
+    [Paragraph('If no FeNO or spirometry: Blood eosinophils > 0.3 + high total IgE + clinical history = enough to start ICS trial.', sBody)],
+    [Paragraph('In resource-limited settings: Prioritise — Salbutamol + ICS + Oral prednisolone. These three cover 90% of acute and chronic asthma management.', sBody)],
+]
+minT1 = TableStyle([
+    ('BACKGROUND',(0,0),(0,0),HexColor('#fff3cd')),
+    ('BACKGROUND',(0,1),(-1,-1),HexColor('#fffde7')),
+    ('LEFTPADDING',(0,0),(-1,-1),12),('RIGHTPADDING',(0,0),(-1,-1),10),
+    ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),
+    ('TOPPADDING',(0,0),(0,0),8),('BOTTOMPADDING',(-1,-1),(-1,-1),8),
+])
+minTO = TableStyle([
+    ('BOX',(0,0),(-1,-1),2,HexColor('#f0a500')),
+    ('BACKGROUND',(0,0),(-1,-1),HexColor('#fff3cd')),
+    ('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),
+    ('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0),
+])
+innerMin = Table(minimal_rows, colWidths=[CW-4])
+innerMin.setStyle(minT1)
+outerMin = Table([[innerMin]], colWidths=[CW])
+outerMin.setStyle(minTO)
+story.append(outerMin)
+story.append(Spacer(1, 10))
+memory_hook('MINIMAL RESOURCES: MDI + plastic bottle spacer = just as good as nebuliser. Oral prednisolone = as good as IV hydrocortisone. PEFR meter alone = diagnosis tool. Salbutamol + ICS + prednisolone = the essential three.', story)
 divider(story)
 
-# ── MASTER SUMMARY ────────────────────────────────────────────────────────────
-story.append(Spacer(1, 6))
-sGrn  = ParagraphStyle('GR',  fontName='DV',   fontSize=8.5, leading=13, textColor=HexColor('#155724'), spaceAfter=0)
-sGrnB = ParagraphStyle('GRB', fontName='DV-B', fontSize=10,  leading=15, textColor=HexColor('#155724'), spaceAfter=2)
-gTS1  = TableStyle([
+# Master Memory Summary
+sGrn  = ParagraphStyle('GR',  fontName='DV',   fontSize=9.5, leading=14, textColor=HexColor('#155724'), spaceAfter=0)
+sGrnB = ParagraphStyle('GRB', fontName='DV-B', fontSize=11,  leading=16, textColor=HexColor('#155724'), spaceAfter=2)
+gTS1 = TableStyle([
     ('BACKGROUND',(0,0),(-1,-1),HexColor('#d4edda')),
     ('LEFTPADDING',(0,0),(-1,-1),14),('RIGHTPADDING',(0,0),(-1,-1),10),
-    ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
-    ('TOPPADDING',(0,0),(0,0),8),('BOTTOMPADDING',(0,-1),(0,-1),8),
+    ('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3),
+    ('TOPPADDING',(0,0),(0,0),10),('BOTTOMPADDING',(0,-1),(0,-1),10),
 ])
-gTSO  = TableStyle([
-    ('BOX',(0,0),(-1,-1),2,HexColor('#28a745')),
+gTSO = TableStyle([
+    ('BOX',(0,0),(-1,-1),2.5,HexColor('#28a745')),
     ('BACKGROUND',(0,0),(-1,-1),HexColor('#d4edda')),
     ('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),
     ('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0),
 ])
 gRows = [
     [Paragraph('MASTER MEMORY SUMMARY — ASTHMA, LARYNGEAL SPASM & AIRWAY DISEASE', sGrnB)],
-    [Paragraph('ANATOMY KEY: Stridor = UPPER airway (larynx). Wheeze = LOWER airway (bronchioles). Salbutamol only helps LOWER airway. Stridor on inspiration = VCD/laryngospasm/laryngeal oedema.', sGrn)],
-    [Paragraph('ASTHMA MECHANISM: Allergen + IgE + Mast cells → Histamine + Leukotrienes → Bronchoconstriction (early, salbutamol reverses) + Eosinophilic inflammation (late, steroids reverse) + Mucus plugging. All 3 together in attack.', sGrn)],
-    [Paragraph('TRIGGERS: Allergens (cat most potent). Rhinovirus URTI. NSAIDs + Beta-blockers (NEVER give). Occupational (better on holidays). GERD. Exercise. Premenstrual. Mould.', sGrn)],
-    [Paragraph('SEVERITY: PEFR 50-75% = Moderate. 33-50% = Acute Severe (cannot complete sentences, HR>110, RR>25). <33% = Life-Threatening (silent chest, SpO2 <92%, cyanosis, exhaustion, confusion, bradycardia). Rising PaCO2 = ICU EMERGENCY.', sGrn)],
-    [Paragraph('ACUTE MANAGEMENT: Oxygen (94-98%) + Salbutamol neb (5mg continuous) + Ipratropium 500mcg + Hydrocortisone 100mg IV + Magnesium sulphate 1.2-2g IV over 20 min (in acute severe/life-threatening). CXR (exclude pneumothorax).', sGrn)],
-    [Paragraph('BTS STEPS: 1=SABA PRN. 2=+ICS. 3=+LABA (NEVER without ICS). 4=High ICS + Montelukast/Theophylline/Tiotropium. 5=Biologics (Omalizumab=high IgE; Mepolizumab/Benralizumab=high eosinophils; Tezepelumab=any).', sGrn)],
-    [Paragraph('VCD/ILO: Stridor (not wheeze). Inspiratory obstruction. No response to salbutamol/steroids. Normal FeNO. Diagnosed by laryngoscopy. Treated by speech therapy. Flow-volume loop: flat inspiratory limb.', sGrn)],
-    [Paragraph('HAE: No urticaria. Slow swelling (hours). Abdominal colic. Family history. C4 LOW (best screen). C1-INH low. Adrenaline/antihistamines DO NOT WORK. Treat: C1-INH concentrate or Icatibant. OCP + ACE inhibitors WORSEN HAE.', sGrn)],
-    [Paragraph('ANAPHYLAXIS: Urticaria + angioedema + bronchospasm + hypotension. ADRENALINE 0.5mg IM (outer thigh) FIRST. Then: IV fluids + chlorphenamine + hydrocortisone. Tryptase confirms (take 1-3h after attack).', sGrn)],
-    [Paragraph('ABPA: Asthma + total IgE >1000 + central bronchiectasis on CT + Aspergillus IgE raised + eosinophilia. Treatment: Prednisolone + Itraconazole. Monitor IgE.', sGrn)],
-    [Paragraph('GERD-ASTHMA: GERD causes cough, laryngospasm (nocturnal gasping), and worsens asthma. Treat: PPI + elevate head of bed + avoid food 3h before sleep. 24h pH monitoring confirms.', sGrn)],
-    [Paragraph('PHARMACOLOGY: Salbutamol (beta-2, 4h). Ipratropium (anticholinergic, add in acute severe). ICS (preventer, anti-inflammatory). LABA (12h, always with ICS). Montelukast (leukotriene blocker, NSAID asthma). Theophylline (narrow window, monitor levels). Magnesium 2g IV (calcium channel blocker, relaxes bronchioles). Icatibant (bradykinin B2 antagonist, HAE).', sGrn)],
-    [Paragraph('MRCP KEYS: (1) PEFR <33% + silent chest = life-threatening. (2) Normal PaCO2 in tachypnoeic asthmatic = tiring = ICU. (3) LABA must NEVER be given without ICS. (4) HAE: C4 low, no urticaria, no adrenaline. (5) VCD: stridor, no response to salbutamol, speech therapy treats. (6) ACE inhibitor angioedema = bradykinin = stop drug, give icatibant. (7) Theophylline toxicity = arrhythmias + seizures.', sGrn)],
+    [Paragraph('DEFINITION: Asthma = reversible, variable airflow obstruction + airway hyperresponsiveness + inflammation. Three changes: bronchoconstriction + eosinophilic inflammation + mucus plugging.', sGrn)],
+    [Paragraph('MECHANISM: Allergen > IgE on mast cells > histamine + leukotrienes (early phase 15 min) > eosinophils + T-cells (late phase 4-8h). Salbutamol = early phase. Steroids = late phase.', sGrn)],
+    [Paragraph('DIAGNOSIS: FEV1/FVC < 0.7 + > 12% and > 200mL reversibility after salbutamol. Or PEFR diurnal variation > 20%. FeNO > 40 ppb = eosinophilic. Symptom triad: wheeze + breathlessness + cough (nocturnal).', sGrn)],
+    [Paragraph('SEVERITY (BTS): Moderate = PEFR 50-75%, RR < 25, SpO2 > 92%, speech normal. Severe = PEFR 33-50%, RR > 25, HR > 110, sentences broken. Life-threatening = PEFR < 33%, SpO2 < 92%, SILENT CHEST, confusion, bradycardia, high PaCO2.', sGrn)],
+    [Paragraph('ACUTE MANAGEMENT: Oxygen (target 94-98%) + Salbutamol 2.5-5mg neb (repeat 20 min) + Ipratropium 500mcg neb + Hydrocortisone 100mg IV QDS or prednisolone 40-50mg oral + Magnesium 2g IV over 20 min (severe/LT). Call ITU if PaCO2 rising or not improving.', sGrn)],
+    [Paragraph('BTS LADDER: Step 1 = SABA PRN. Step 2 = + ICS (low dose). Step 3 = + LABA (ALWAYS with ICS). Step 4 = increase ICS + LTRA. Step 5 = oral steroids + biologics (specialist). LABA NEVER alone in asthma.', sGrn)],
+    [Paragraph('BIOLOGICS: Omalizumab = anti-IgE, atopic asthma, high IgE. Mepolizumab/Benralizumab = anti-IL-5, eosinophils > 0.3. Dupilumab = anti-IL-4R/IL-13, broad. Tezepelumab = anti-TSLP, works in non-eosinophilic too.', sGrn)],
+    [Paragraph('DIFFERENTIALS: VCD = inspiratory wheeze + normal spirometry + laryngoscopy. Anaphylaxis = urticaria + tryptase up + epinephrine NOW. HAE = C4 low + C1-INH low + icatibant (NOT adrenaline). ABPA = IgE > 1000 + Aspergillus IgE + central bronchiectasis.', sGrn)],
+    [Paragraph('DRUGS CONTRAINDICATED: NSAIDs (leukotrienes surge). Beta-blockers (bronchoconstriction even eye drops). ACE inhibitors cause cough (not bronchospasm). Samter triad: asthma + nasal polyps + NSAID sensitivity.', sGrn)],
+    [Paragraph('KEY COMPLICATIONS: PaCO2 rising = Type 2 RF = ITU. Pneumothorax = sudden unilateral pain. Silent chest = no air = emergency. Long-term steroids = bone protection (bisphosphonate + Ca + D3). ICS = rinse mouth to prevent thrush.', sGrn)],
+    [Paragraph('SPECIAL SITUATIONS: Pregnancy = SAFE to continue ALL inhalers. Exercise-induced = salbutamol 15 min before + montelukast. Occupational = serial PEFR (better on holiday = OA). Theophylline + erythromycin = toxicity (check level). Hypokalaemia from salbutamol = check K+ in severe attacks.', sGrn)],
+    [Paragraph('PACES: Look for forward lean + accessory muscles + expiratory wheeze. Clubbing NOT asthma. Silent chest = emergency. PEFR at bedside = essential measure. Communication: "Use brown inhaler EVERY DAY. Blue inhaler = rescue only. Always rinse mouth after brown."', sGrn)],
 ]
 innerG = Table(gRows, colWidths=[CW-4])
 innerG.setStyle(gTS1)
 outerG = Table([[innerG]], colWidths=[CW])
 outerG.setStyle(gTSO)
 story.append(outerG)
-story.append(Spacer(1, 12))
+story.append(Spacer(1, 14))
 
+# Footer note
+story.append(HRFlowable(width=CW, thickness=1.5, color=HexColor('#0d5c63'), spaceAfter=6))
+story.append(Paragraph('MRCP Revision Note: Asthma, Laryngeal Spasm and Airway Disease  |  BTS/SIGN Guidelines 2022  |  Ganesh & Kuruvilla Prescribing Reference  |  Sections 1-13 inclusive', ParagraphStyle('FT', fontName='DV-I', fontSize=8, leading=11, textColor=HexColor('#555555'), alignment=1)))
+
+# Build document
 doc.build(story)
-print('SUCCESS: Asthma & Laryngeal Airway MRCP Note saved to', OUT)
+print('SUCCESS: Asthma_Laryngeal_MRCP_Note.pdf written to', OUT)
