@@ -171,294 +171,278 @@ def load_fonts(sizes):
 
 print('Building PIL diagrams...')
 
-# ── PIL 1: Airway Anatomy — REDESIGNED ──────────────────────────────────────
+# ── TEXT-SAFE DIAGRAM TOOLKIT ────────────────────────────────────────────────
+# Definitive fix for diagram text overlap: every string is measured with
+# draw.textlength(), wrapped to fit its box, and box/card height is computed
+# FROM the wrapped line count — never assumed. Boxes stack by tracking the
+# returned bottom-y, so overlap is structurally impossible.
+
+def text_w(draw, s, font):
+    return draw.textlength(s, font=font)
+
+def wrap_text(draw, text, font, max_width):
+    out = []
+    for para in str(text).split('\n'):
+        if para.strip() == '':
+            out.append('')
+            continue
+        words = para.split(' ')
+        cur = ''
+        for w in words:
+            cand = w if not cur else cur + ' ' + w
+            if text_w(draw, cand, font) <= max_width or not cur:
+                cur = cand
+            else:
+                out.append(cur)
+                cur = w
+        if cur:
+            out.append(cur)
+    return out
+
+def lh(font, factor=1.32):
+    return int(font.size * factor)
+
+def draw_block(draw, x, y, text, font, fill, max_width, align='left', extra_gap=0):
+    lines = wrap_text(draw, text, font, max_width)
+    step = lh(font) + extra_gap
+    cy = y
+    for ln in lines:
+        if align == 'center':
+            w = text_w(draw, ln, font)
+            draw.text((x + (max_width - w) / 2, cy), ln, font=font, fill=fill, anchor='la')
+        else:
+            draw.text((x, cy), ln, font=font, fill=fill, anchor='la')
+        cy += step
+    return cy
+
+def card(draw, x0, x1, y, title, body, f_title, f_body, accent, body_bg, pad=13, line_gap=3):
+    """Stacked card: coloured title bar (wrapped) + body box (wrapped).
+    Height is fully computed from wrapped content — never guessed.
+    Returns the bottom-y so the next card stacks below with a guaranteed gap."""
+    inner_w = (x1 - x0) - 2 * pad
+    title_lines = wrap_text(draw, title, f_title, inner_w)
+    body_lines = wrap_text(draw, body, f_body, inner_w) if body else []
+    bar_h = len(title_lines) * lh(f_title) + 16
+    body_h = (len(body_lines) * (lh(f_body) + line_gap) + 2 * pad) if body_lines else 0
+
+    draw.rectangle([x0, y, x1, y + bar_h], fill=accent, outline=accent)
+    draw_block(draw, x0 + pad, y + 8, title, f_title, '#ffffff', inner_w)
+    if body_lines:
+        draw.rectangle([x0, y + bar_h, x1, y + bar_h + body_h], fill=body_bg, outline=accent, width=3)
+        draw_block(draw, x0 + pad, y + bar_h + pad, body, f_body, '#2b2b2b', inner_w, extra_gap=line_gap)
+    return y + bar_h + body_h
+
+def header_band(draw, W, title, font, pad_x, accent='#0d5c63', text_color='#ffffff'):
+    """Title band whose height is computed from the WRAPPED line count — a
+    long title can never spill out of (or be clipped by) its coloured bar."""
+    inner_w = W - 2 * pad_x
+    lines = wrap_text(draw, title, font, inner_w)
+    bar_h = len(lines) * lh(font) + 32
+    draw.rectangle([0, 0, W - 1, bar_h], fill=accent)
+    draw_block(draw, pad_x, 16, title, font, text_color, inner_w, align='center')
+    return bar_h
+
+def finish(img, draw, W, bottom_y, footer_text, f_xs, accent='#0d5c63'):
+    """Dark footer band whose height is computed from the WRAPPED line count,
+    then crop the canvas to the REAL content height (no dead space, and the
+    footer can never spill past the bottom edge)."""
+    inner_w = W - 60
+    lines = wrap_text(draw, footer_text, f_xs, inner_w)
+    foot_h = len(lines) * lh(f_xs) + 20
+    top = bottom_y + 14
+    draw.rectangle([0, top, W - 1, top + foot_h], fill=accent)
+    draw_block(draw, 30, top + 10, footer_text, f_xs, '#ffffff', inner_w, align='center')
+    return img.crop((0, 0, W, top + foot_h + 6))
+
+print('Building PIL diagrams (text-safe card layout)...')
+
+# ── PIL 1: Airway Anatomy — stacked cards, one per anatomical level ─────────
 def make_airway_anatomy():
-    W, H = 900, 700
-    img = Image.new('RGB', (W, H), '#f4fbfc')
+    W, H_MAX = 900, 1500
+    f = load_fonts({'T': 24, 'B': 17, 'XS': 14})
+    img = Image.new('RGB', (W, H_MAX), '#f4fbfc')
     draw = ImageDraw.Draw(img)
-    f = load_fonts({'T':30,'B':26,'S':20,'XS':17})
+    pad_x = 46
+    x0, x1 = pad_x, W - pad_x
+    hh = header_band(draw, W, 'AIRWAY ANATOMY: WHERE EACH CONDITION OCCURS', f['T'], pad_x)
 
-    # Outer border + title
-    draw.rectangle([0,0,W-1,H-1], fill='#f4fbfc', outline='#1a8a94', width=3)
-    draw.rectangle([0,0,W-1,52], fill='#0d5c63', outline='#0d5c63')
-    draw.text((W//2, 26), 'AIRWAY ANATOMY: WHERE EACH CONDITION OCCURS',
-              font=f['T'], fill='#ffffff', anchor='mm')
-
-    # Level definitions: (left box) → (right box)
-    # cx_L=left centre, cx_R=right centre, cy=vertical centre, bg, border, name, detail, r_name, r_detail
     levels = [
-        ('#fde8e8','#c0392b',
-         'NOSE / MOUTH','Entry point for air and allergens',
-         'Allergens Enter Here','Pollens  |  Dust mite  |  Mould  |  Pet dander'),
-        ('#fef3e2','#d4640a',
-         'PHARYNX  (throat)','Shared passage — food and air',
-         'Post-Nasal Drip','Mucus drips down → triggers cough + bronchoconstriction'),
-        ('#f5eef8','#7d3c98',
-         'LARYNX  (voice box)','Contains vocal cords  |  UPPER airway',
-         'LARYNGOSPASM  /  VCD  /  OEDEMA','Anaphylaxis  |  HAE  |  ACE inhibitor angioedema'),
-        ('#fff3cd','#b8860b',
-         'TRACHEA  (windpipe)','Rigid cartilage rings  |  Cannot collapse',
-         'Tracheal Stenosis','Fixed obstruction  |  Stridor on both breathing in AND out'),
-        ('#e8f4fd','#2471a3',
-         'BRONCHI  (main tubes)','Left and right bronchus  |  Branches into lobes',
-         'Large Airway Obstruction','Foreign body  |  Tumour  |  Large mucus plug'),
-        ('#d4edda','#28a745',
-         'BRONCHIOLES  +  ALVEOLI','Tiny airways  |  Gas exchange happens here',
-         'ASTHMA  /  ALLERGIC BRONCHITIS','Bronchoconstriction  |  Inflammation  |  Mucus plugging'),
+        ('#c0392b', '#fde8e8', 'NOSE / MOUTH — entry point for air and allergens',
+         'Triggers enter here first: pollens, house dust mite, mould spores, pet dander.'),
+        ('#d4640a', '#fef3e2', 'PHARYNX (throat) — shared passage for food and air',
+         'Post-nasal drip: mucus running down the back of the throat triggers cough and bronchoconstriction.'),
+        ('#7d3c98', '#f5eef8', 'LARYNX (voice box) — the UPPER airway begins here',
+         'Contains the vocal cords. Conditions found here: laryngospasm, vocal cord dysfunction (VCD), and laryngeal oedema (anaphylaxis, hereditary angioedema, ACE-inhibitor angioedema).'),
+        ('#b8860b', '#fff3cd', 'TRACHEA (windpipe) — a rigid cartilage tube',
+         'Cartilage rings hold it open — it cannot collapse. Tracheal stenosis causes a FIXED obstruction: stridor on breathing in AND out.'),
+        ('#2471a3', '#e8f4fd', 'BRONCHI — the main branching airway tubes',
+         'Left and right bronchus, branching further into lobes. Large-airway obstruction here: foreign body, tumour, or a large mucus plug.'),
+        ('#28a745', '#d4edda', 'BRONCHIOLES + ALVEOLI — the LOWER airway, where gas exchange happens',
+         'The tiniest airways — exactly where ASTHMA and allergic bronchitis occur: bronchoconstriction, inflammation, and mucus plugging.'),
     ]
+    yy = hh + 22
+    for accent, bg, title, body in levels:
+        yy = card(draw, x0, x1, yy, title, body, f['B'], f['XS'], accent, bg)
+        yy += 18
 
-    box_h = 78
-    gap   = 18
-    start_y = 68
-    cx_L  = 218
-    cx_R  = 672
-    bw_L  = 390
-    bw_R  = 410
-    mid_x = (cx_L + bw_L//2 + cx_R - bw_R//2) // 2   # midpoint for connecting line
+    final = finish(img, draw, W, yy,
+        'UPPER AIRWAY (larynx and above) → STRIDOR on breathing IN   |   LOWER AIRWAY (below larynx) → WHEEZE on breathing OUT',
+        f['XS'])
+    return i2r(final, CW)
 
-    for i, (bg, bd, lname, ldetail, rname, rdetail) in enumerate(levels):
-        cy = start_y + i*(box_h+gap) + box_h//2
-
-        # Left box
-        lx0 = cx_L - bw_L//2; lx1 = cx_L + bw_L//2
-        draw.rectangle([lx0, cy-box_h//2, lx1, cy+box_h//2],
-                       fill=bg, outline=bd, width=3)
-        draw.text((cx_L, cy - 16), lname, font=f['B'], fill=bd, anchor='mm')
-        draw.text((cx_L, cy + 14), ldetail, font=f['XS'], fill='#333333', anchor='mm')
-
-        # Right box
-        rx0 = cx_R - bw_R//2; rx1 = cx_R + bw_R//2
-        draw.rectangle([rx0, cy-box_h//2, rx1, cy+box_h//2],
-                       fill=bg, outline=bd, width=3)
-        draw.text((cx_R, cy - 16), rname, font=f['B'], fill=bd, anchor='mm')
-        draw.text((cx_R, cy + 14), rdetail, font=f['XS'], fill='#333333', anchor='mm')
-
-        # Connecting dashed line
-        for dx in range(lx1+6, rx0-6, 14):
-            draw.line([(dx, cy),(min(dx+8, rx0-6), cy)], fill='#aaaaaa', width=2)
-
-        # Down arrow on left (except last)
-        if i < len(levels)-1:
-            arr_d(draw, cx_L, cy+box_h//2, length=gap, col=bd, w=3)
-
-    # Footer labels
-    draw.rectangle([0, H-36, W-1, H-1], fill='#0d5c63')
-    draw.text((230, H-18),
-              'UPPER AIRWAY = larynx and above  |  STRIDOR = breathing IN',
-              font=f['XS'], fill='#ffffff', anchor='mm')
-    draw.text((670, H-18),
-              'LOWER AIRWAY = below larynx  |  WHEEZE = breathing OUT',
-              font=f['XS'], fill='#aaffcc', anchor='mm')
-    return i2r(img, CW)
-
-# ── PIL 2: Asthma Pathophysiology — REDESIGNED ───────────────────────────────
+# ── PIL 2: What happens inside the airway during an asthma attack ───────────
 def make_asthma_path():
-    W, H = 900, 560
-    img = Image.new('RGB', (W, H), '#fffaf5')
+    W, H_MAX = 900, 1700
+    f = load_fonts({'T': 24, 'B': 17, 'XS': 14})
+    img = Image.new('RGB', (W, H_MAX), '#f4fbfc')
     draw = ImageDraw.Draw(img)
-    f = load_fonts({'T':28,'B':24,'S':20,'XS':17})
+    pad_x = 46
+    x0, x1 = pad_x, W - pad_x
+    hh = header_band(draw, W, 'WHAT HAPPENS INSIDE THE AIRWAY DURING AN ASTHMA ATTACK', f['T'], pad_x)
 
-    draw.rectangle([0,0,W-1,H-1], fill='#fffaf5', outline='#d4640a', width=3)
-    draw.rectangle([0,0,W-1,50], fill='#d4640a')
-    draw.text((W//2, 25), 'ASTHMA: NORMAL AIRWAY  vs  ASTHMATIC AIRWAY',
-              font=f['T'], fill='#ffffff', anchor='mm')
+    panel_top, panel_h = hh + 22, 230
+    mid_gap = 32
+    lx0, lx1 = x0, x0 + (x1 - x0 - mid_gap) // 2
+    rx0, rx1 = lx1 + mid_gap, x1
+    cy = panel_top + (panel_h - 50) // 2
 
-    # ── Normal airway (left panel) ──
-    draw.rectangle([15, 58, 430, H-40], fill='#eafff0', outline='#28a745', width=3)
-    draw.text((222, 78), 'NORMAL AIRWAY', font=f['B'], fill='#155724', anchor='mm')
+    draw.rectangle([lx0, panel_top, lx1, panel_top + panel_h], outline='#0d5c63', width=3)
+    cxL = lx0 + (lx1 - lx0) // 2
+    draw.ellipse([cxL - 70, cy - 70, cxL + 70, cy + 70], outline='#2471a3', width=10)
+    draw.ellipse([cxL - 46, cy - 46, cxL + 46, cy + 46], fill='#ffffff')
+    draw_block(draw, lx0 + 16, panel_top + panel_h - 36,
+               'NORMAL: wide-open lumen — air flows freely', f['XS'], '#1a1a2e',
+               (lx1 - lx0) - 32, align='center')
 
-    # Large circle = lumen
-    draw.ellipse([90, 100, 360, 280], fill='#ffffff', outline='#28a745', width=4)
-    draw.ellipse([145, 140, 305, 240], fill='#d0f0ff', outline='#2471a3', width=3)
-    draw.text((225, 190), 'WIDE OPEN', font=f['B'], fill='#2471a3', anchor='mm')
-    draw.text((225, 217), 'LUMEN', font=f['S'], fill='#2471a3', anchor='mm')
+    draw.rectangle([rx0, panel_top, rx1, panel_top + panel_h], outline='#c0392b', width=3)
+    cxR = rx0 + (rx1 - rx0) // 2
+    draw.ellipse([cxR - 70, cy - 70, cxR + 70, cy + 70], outline='#c0392b', width=10)
+    draw.ellipse([cxR - 46, cy - 46, cxR + 46, cy + 46], fill='#e8a98c')
+    draw.ellipse([cxR - 22, cy - 22, cxR + 22, cy + 22], fill='#7d3c98')
+    draw_block(draw, rx0 + 16, panel_top + panel_h - 36,
+               'ASTHMA ATTACK: wall muscle squeezes, lining swells, mucus blocks the centre',
+               f['XS'], '#1a1a2e', (rx1 - rx0) - 32, align='center')
 
-    normal_items = [
-        'Thin smooth muscle wall',
-        'Thin normal mucus layer',
-        'No inflammation',
-        'Air flows freely',
-        'FEV1 / FVC ratio  > 70%',
+    yy = panel_top + panel_h + 26
+    cards = [
+        ('#2471a3', '#e8f4fd', '① BRONCHOCONSTRICTION — smooth muscle in the airway wall contracts',
+         'The ring of smooth muscle wrapped around each airway squeezes tight, narrowing the tube air must pass through. This is the FASTEST of the three changes — the one that bronchodilators (salbutamol) reverse within minutes.'),
+        ('#7d3c98', '#f5eef8', '② MUCOSAL OEDEMA — the airway lining becomes inflamed and swollen',
+         'Eosinophils, mast cells and Th2 lymphocytes flood the wall, releasing histamine and leukotrienes. The lining swells inward, narrowing the lumen further. This is what inhaled corticosteroids treat — they switch off the inflammatory cascade.'),
+        ('#b8860b', '#fff3cd', '③ MUCUS PLUGGING — thick, sticky mucus blocks the airway centre',
+         'Goblet cells overproduce thick mucus that the cilia cannot clear. In fatal asthma at post-mortem the airways are characteristically packed solid with mucus plugs — one reason a severe attack can become eerily silent.'),
+        ('#c0392b', '#fde8e8', 'THE RESULT — turbulent, restricted airflow the patient must work hard to push through',
+         'All three changes occur together and reinforce each other. The patient must generate far greater respiratory effort to move air through the narrowed tube — heard as wheeze, and felt as breathlessness and chest tightness.'),
     ]
-    for j, txt in enumerate(normal_items):
-        draw.text((222, 298 + j*34), txt, font=f['S'], fill='#155724', anchor='mm')
+    for accent, bg, title, body in cards:
+        yy = card(draw, x0, x1, yy, title, body, f['B'], f['XS'], accent, bg)
+        yy += 16
 
-    # ── Asthmatic airway (right panel) ──
-    draw.rectangle([455, 58, W-15, H-40], fill='#fff0f0', outline='#c0392b', width=3)
-    draw.text((678, 78), 'ASTHMATIC AIRWAY (ATTACK)', font=f['B'], fill='#c0392b', anchor='mm')
+    final = finish(img, draw, W, yy,
+        'MEMORY DEVICE — the three culprits spell "C.O.M.": Constriction, Oedema, Mucus — all three must be treated together',
+        f['XS'])
+    return i2r(final, CW)
 
-    # Thick walled circle
-    draw.ellipse([525, 100, 835, 280], fill='#fde8e8', outline='#c0392b', width=12)
-    # Mucus plug fills most of lumen
-    draw.ellipse([607, 145, 753, 235], fill='#f5c518', outline='#b8860b', width=3)
-    draw.text((680, 178), 'MUCUS', font=f['B'], fill='#7a5500', anchor='mm')
-    draw.text((680, 205), 'PLUG', font=f['B'], fill='#7a5500', anchor='mm')
-
-    asthma_items = [
-        '1.  BRONCHOCONSTRICTION',
-        '    Muscle squeezes  --  airway narrows',
-        '2.  INFLAMMATION',
-        '    Wall swells  --  eosinophils invade',
-        '3.  MUCUS HYPERSECRETION',
-        '    Goblet cells over-produce thick mucus',
-    ]
-    for j, txt in enumerate(asthma_items):
-        col = '#c0392b' if txt.startswith(('1','2','3')) else '#721c24'
-        fnt = f['S'] if txt.startswith(('1','2','3')) else f['XS']
-        draw.text((678, 298 + j*30), txt, font=fnt, fill=col, anchor='mm')
-
-    # Footer
-    draw.rectangle([0, H-38, W-1, H-1], fill='#fff3cd', outline='#e6a817', width=2)
-    draw.text((W//2, H-19),
-              'TRIGGERS: Allergens  |  Cold air  |  Exercise  |  NSAIDs  |  Smoke  |  Viral URTI  |  Stress  |  GERD',
-              font=f['XS'], fill='#7a5500', anchor='mm')
-    return i2r(img, CW)
-
-# ── PIL 3: Severity Classification — REDESIGNED ──────────────────────────────
+# ── PIL 3: Severity grading of an acute asthma attack ───────────────────────
 def make_severity():
-    W, H = 900, 460
-    img = Image.new('RGB', (W, H), '#ffffff')
+    W, H_MAX = 900, 1500
+    f = load_fonts({'T': 24, 'B': 17, 'XS': 14})
+    img = Image.new('RGB', (W, H_MAX), '#f4fbfc')
     draw = ImageDraw.Draw(img)
-    f = load_fonts({'T':28,'B':24,'S':20,'XS':17})
+    pad_x = 46
+    x0, x1 = pad_x, W - pad_x
+    hh = header_band(draw, W, 'GRADING THE SEVERITY OF AN ACUTE ASTHMA ATTACK (BTS / SIGN)', f['T'], pad_x)
 
-    draw.rectangle([0,0,W-1,H-1], fill='#ffffff', outline='#1a8a94', width=3)
-    draw.rectangle([0,0,W-1,50], fill='#0d5c63')
-    draw.text((W//2, 25), 'ACUTE ASTHMA: SEVERITY CLASSIFICATION  (BTS / SIGN)',
-              font=f['T'], fill='#ffffff', anchor='mm')
-
-    grades = [
-        ('#d4edda','#28a745','MODERATE',
-         'PEFR  50 - 75%','SpO2  >=  92%','Normal speech  |  HR < 110  |  RR < 25',
-         'Treat in A&E  |  Salbutamol + Prednisolone oral'),
-        ('#fff3cd','#e6a817','ACUTE SEVERE',
-         'PEFR  33 - 50%','SpO2  >=  92%','Cannot complete sentence  |  HR >= 110  |  RR >= 25',
-         'Admit  |  Salbutamol + Ipratropium + Hydrocortisone IV'),
-        ('#fde8e8','#c0392b','LIFE-THREATENING',
-         'PEFR  < 33%','SpO2  < 92%','Silent chest  |  Cyanosis  |  Exhaustion  |  Confusion',
-         'Add Magnesium sulphate 2g IV  |  ITU review NOW'),
-        ('#f5eef8','#7d3c98','NEAR - FATAL',
-         'PaCO2 RISING','Needs ventilator','Bradycardia  |  Absent breath sounds  |  Pre-arrest',
-         'Immediate ITU  |  Intubation  |  ICU care'),
+    levels = [
+        ('#28a745', '#d4edda', 'MODERATE EXACERBATION',
+         'PEFR 50–75% of best/predicted. Increasing symptoms but no features of acute severe asthma. SpO2 ≥ 92% on air. ACTION: nebulised/inhaled salbutamol, oral prednisolone 40–50 mg, reassess within 1 hour.'),
+        ('#d4640a', '#fef3e2', 'ACUTE SEVERE ASTHMA',
+         'ANY of: PEFR 33–50% of best/predicted, respiratory rate ≥ 25/min, heart rate ≥ 110/min, or inability to complete sentences in one breath. SpO2 ≥ 92%. ACTION: admit, give oxygen, nebulised salbutamol + ipratropium, oral or IV steroids, monitor closely.'),
+        ('#c0392b', '#fde8e8', 'LIFE-THREATENING ASTHMA — any ONE of these features',
+         'PEFR < 33% of best/predicted. SpO2 < 92% or PaO2 < 8 kPa. A "normal" PaCO2 (4.6–6.0 kPa) — a worrying sign of fatigue, NOT improvement. Silent chest, cyanosis, feeble respiratory effort, arrhythmia, hypotension, exhaustion, confusion or coma. ACTION: call ICU/anaesthetics now — IV magnesium sulfate, IV aminophylline, consider intubation.'),
+        ('#7d3c98', '#f5eef8', 'NEAR-FATAL ASTHMA',
+         'Raised PaCO2 and/or needing mechanical ventilation with raised inflation pressures. CO2 is rising because the patient can no longer sustain the work of breathing — a pre-arrest state needing immediate senior critical-care input.'),
     ]
+    yy = hh + 22
+    for accent, bg, title, body in levels:
+        yy = card(draw, x0, x1, yy, title, body, f['B'], f['XS'], accent, bg)
+        yy += 18
 
-    bw = (W - 50) // 4 - 6
-    for i, (bg, bd, title, l1, l2, l3, l4) in enumerate(grades):
-        x0 = 15 + i * (bw + 6)
-        y0 = 58
-        bh = H - 80
-        draw.rectangle([x0, y0, x0+bw, y0+bh], fill=bg, outline=bd, width=3)
-        # Title bar
-        draw.rectangle([x0, y0, x0+bw, y0+42], fill=bd)
-        draw.text((x0+bw//2, y0+21), title, font=f['B'], fill='#ffffff', anchor='mm')
-        # Lines
-        cx = x0 + bw//2
-        draw.text((cx, y0+70),  l1, font=f['S'], fill='#1a1a2e', anchor='mm')
-        draw.text((cx, y0+100), l2, font=f['S'], fill='#1a1a2e', anchor='mm')
-        # divider
-        draw.line([(x0+10, y0+118),(x0+bw-10, y0+118)], fill=bd, width=2)
-        draw.text((cx, y0+142), l3, font=f['XS'], fill='#1a1a2e', anchor='mm')
-        draw.text((cx, y0+165), '', font=f['XS'], fill='#1a1a2e', anchor='mm')
-        draw.line([(x0+10, y0+178),(x0+bw-10, y0+178)], fill=bd, width=2)
-        # Action
-        for k, part in enumerate(l4.split('  |  ')):
-            draw.text((cx, y0+200+k*26), part.strip(), font=f['XS'], fill=bd, anchor='mm')
+    final = finish(img, draw, W, yy,
+        'KEY TRAP — a "normal" PaCO2 during an asthma attack is NOT reassuring: it means the patient is tiring and heading towards respiratory failure',
+        f['XS'])
+    return i2r(final, CW)
 
-    draw.rectangle([0,H-28,W-1,H-1], fill='#0d5c63')
-    draw.text((W//2, H-14),
-              'PEFR = Peak Expiratory Flow Rate  --  compare to personal best or predicted',
-              font=f['XS'], fill='#ffffff', anchor='mm')
-    return i2r(img, CW)
-
-# ── PIL 4: Differential Diagnosis Map — REDESIGNED ───────────────────────────
+# ── PIL 4a: Differential map — the four classic asthma mimics ───────────────
 def make_diff_map():
-    W, H = 900, 560
-    img = Image.new('RGB', (W, H), '#f4fbfc')
+    W, H_MAX = 900, 1300
+    f = load_fonts({'T': 24, 'B': 17, 'XS': 14})
+    img = Image.new('RGB', (W, H_MAX), '#f4fbfc')
     draw = ImageDraw.Draw(img)
-    f = load_fonts({'T':28,'B':22,'S':19,'XS':16})
-
-    draw.rectangle([0,0,W-1,H-1], fill='#f4fbfc', outline='#1a8a94', width=3)
-    draw.rectangle([0,0,W-1,52], fill='#0d5c63')
-    draw.text((W//2, 26),
-              'ALL POSSIBLE CAUSES OF RECURRENT BREATHLESSNESS IN YOUNG ADULT',
-              font=f['T'], fill='#ffffff', anchor='mm')
+    pad_x = 46
+    x0, x1 = pad_x, W - pad_x
+    hh = header_band(draw, W, 'ALL POSSIBLE DIAGNOSES AT A GLANCE — UPPER vs LOWER AIRWAY CAUSES', f['T'], pad_x)
 
     diffs = [
-        # row 1
-        (110, 155, '#d4edda','#28a745',
-         'ASTHMA',
-         'Wheeze on breathing OUT',
-         'Responds to salbutamol',
-         'Childhood history  |  Atopy'),
-        (330, 155, '#f5eef8','#7d3c98',
-         'VCD  /  ILO',
-         'STRIDOR on breathing IN',
-         'Does NOT respond to salbutamol',
-         'Anxiety link  |  Speech therapy'),
-        (555, 155, '#fde8e8','#c0392b',
-         'ANAPHYLAXIS',
-         'Urticaria + swelling + wheeze',
-         'Adrenaline 0.5mg IM reverses it',
-         'Triggers: nuts / bees / drugs'),
-        (780, 155, '#fef3e2','#d4640a',
-         'LARYNGOSPASM',
-         'Sudden  --  seconds  --  then OK',
-         'GERD most common trigger',
-         'Treats with PPI + breathing Rx'),
-        # row 2
-        (110, 360, '#e8f4fd','#2471a3',
-         'ABPA',
-         'Asthma + brown mucus plugs',
-         'Total IgE > 1000  |  Aspergillus IgE',
-         'Central bronchiectasis on CT'),
-        (330, 360, '#fff3cd','#e6a817',
-         'HAE',
-         'Swelling WITHOUT urticaria',
-         'C4 low  |  C1-INH low',
-         'Adrenaline DOES NOT WORK'),
-        (555, 360, '#fde8e8','#856404',
-         'EOSINOPHILIC BRONCHITIS',
-         'COUGH only  --  no wheeze',
-         'Normal spirometry  |  FeNO raised',
-         'ICS very effective treatment'),
-        (780, 360, '#e0f4f5','#0d5c63',
-         'GERD-INDUCED',
-         'Cough  |  Hoarse  |  Night gasping',
-         'Worse lying flat  |  after meals',
-         'Treat with PPI + lifestyle'),
+        ('#2471a3', '#e8f4fd', 'ASTHMA — a LOWER-airway problem',
+         'Episodic wheeze, cough (often nocturnal/early-morning), chest tightness — triggered by allergens, exercise, cold air or viral infection. Wheeze is heard on EXPIRATION. Reversible with a bronchodilator; confirmed by PEFR variability or spirometry with reversibility.'),
+        ('#7d3c98', '#f5eef8', 'VOCAL CORD DYSFUNCTION / INDUCIBLE LARYNGEAL OBSTRUCTION (VCD/ILO) — an UPPER-airway problem',
+         'Mimics asthma but does NOT respond to asthma treatment. Sudden breathlessness with noise localised to the THROAT, normal oxygen saturation. Stridor is heard mainly on INSPIRATION. Diagnosed by laryngoscopy showing paradoxical vocal-cord closure on breathing in.'),
+        ('#c0392b', '#fde8e8', 'ANAPHYLAXIS — a MEDICAL EMERGENCY',
+         'Rapid onset after allergen exposure (food, drug, sting). Laryngeal/lingual oedema causing stridor, plus urticaria, angioedema, hypotension and bronchospasm. Treat immediately: IM adrenaline 0.5 mg (1:1000), high-flow oxygen, IV fluids, remove the trigger.'),
+        ('#d4640a', '#fef3e2', 'LARYNGOSPASM',
+         'A sudden, brief, involuntary spasm of the vocal cords — triggered by reflux, irritant inhalation, or during anaesthesia/intubation. A frightening total inability to breathe in, with stridor, resolving within seconds to minutes as the spasm releases.'),
     ]
+    yy = hh + 22
+    for accent, bg, title, body in diffs:
+        yy = card(draw, x0, x1, yy, title, body, f['B'], f['XS'], accent, bg)
+        yy += 16
 
-    bw = 190; bh = 168
-    for cx, cy, bg, bd, t1, t2, t3, t4 in diffs:
-        x0 = cx - bw//2; y0 = cy - bh//2
-        draw.rectangle([x0, y0, x0+bw, y0+bh], fill=bg, outline=bd, width=3)
-        # Title bar
-        draw.rectangle([x0, y0, x0+bw, y0+34], fill=bd)
-        draw.text((cx, y0+17), t1, font=f['B'], fill='#ffffff', anchor='mm')
-        # Content lines
-        draw.text((cx, y0+55),  t2, font=f['XS'], fill='#1a1a2e', anchor='mm')
-        draw.line([(x0+8, y0+72),(x0+bw-8, y0+72)], fill=bd, width=1)
-        draw.text((cx, y0+88),  t3, font=f['XS'], fill='#1a1a2e', anchor='mm')
-        draw.line([(x0+8, y0+104),(x0+bw-8, y0+104)], fill=bd, width=1)
-        draw.text((cx, y0+120), t4, font=f['XS'], fill='#1a1a2e', anchor='mm')
+    final = finish(img, draw, W, yy,
+        'STRIDOR on breathing IN = upper airway (larynx/trachea)   |   WHEEZE on breathing OUT = lower airway (bronchi/bronchioles)',
+        f['XS'])
+    return i2r(final, CW)
 
-    # Row labels
-    draw.text((W//2, 242),
-              'RESPONDS to bronchodilators + steroids = LOWER AIRWAY (asthma spectrum)',
-              font=f['S'], fill='#28a745', anchor='mm')
-    draw.text((W//2, 266),
-              'Does NOT respond = UPPER AIRWAY or NON-ASTHMATIC cause',
-              font=f['S'], fill='#c0392b', anchor='mm')
+# ── PIL 4b: Differential map — the quieter mimics + the master question ─────
+def make_diff_map2():
+    W, H_MAX = 900, 1500
+    f = load_fonts({'T': 24, 'B': 17, 'XS': 14})
+    img = Image.new('RGB', (W, H_MAX), '#f4fbfc')
+    draw = ImageDraw.Draw(img)
+    pad_x = 46
+    x0, x1 = pad_x, W - pad_x
+    hh = header_band(draw, W, 'DIFFERENTIAL DIAGNOSIS MAP — DISTINGUISHING FEATURES, PATTERN BY PATTERN', f['T'], pad_x)
 
-    draw.rectangle([0,H-34,W-1,H-1], fill='#0d5c63')
-    draw.text((W//2, H-17),
-              'KEY QUESTION: Is the sound on breathing IN (stridor=upper) or OUT (wheeze=lower)?',
-              font=f['S'], fill='#ffffff', anchor='mm')
-    return i2r(img, CW)
+    diffs = [
+        ('#28a745', '#d4edda', 'ALLERGIC BRONCHOPULMONARY ASPERGILLOSIS (ABPA)',
+         'A hypersensitivity reaction to Aspergillus fumigatus colonising the airways of patients with asthma or cystic fibrosis. Look for: difficult-to-control wheeze, brown mucus plugs, eosinophilia, raised total IgE and Aspergillus-specific IgE, and central bronchiectasis on CT. Treated with oral corticosteroids ± itraconazole.'),
+        ('#b8860b', '#fff3cd', 'HEREDITARY ANGIOEDEMA (HAE)',
+         'A rare genetic disorder (C1-esterase-inhibitor deficiency) causing recurrent episodes of non-itchy, non-urticarial swelling of the face, lips, larynx and gut. Crucially it does NOT respond to adrenaline, antihistamines or steroids — it needs C1-inhibitor concentrate or icatibant. A family history is often present.'),
+        ('#117a65', '#d7f0ec', 'EOSINOPHILIC BRONCHITIS',
+         'Chronic cough WITHOUT wheeze or airflow obstruction — spirometry and PEFR variability are normal. Sputum shows eosinophilia. Responds well to inhaled corticosteroids. An important mimic to recognise whenever the spirometry simply does not fit an asthma label.'),
+        ('#943126', '#f6dcd7', 'GASTRO-OESOPHAGEAL REFLUX (GERD)-INDUCED COUGH / WHEEZE',
+         'Microaspirated acid reflux irritates the airway, triggering chronic cough, throat-clearing, nocturnal wheeze and laryngeal irritation — sometimes mistaken for asthma. Look for heartburn, a sour taste, and symptoms that worsen on lying flat or after meals. Responds to proton-pump inhibitors and lifestyle measures.'),
+    ]
+    yy = hh + 22
+    for accent, bg, title, body in diffs:
+        yy = card(draw, x0, x1, yy, title, body, f['B'], f['XS'], accent, bg)
+        yy += 16
+
+    yy = card(draw, x0, x1, yy + 6,
+        'THE KEY QUESTION THAT SEPARATES THEM ALL',
+        'WHERE is the noise coming from, and WHEN in the breathing cycle does it occur? Stridor on INSPIRATION → upper airway (larynx/trachea: VCD, anaphylaxis, laryngospasm, HAE). Wheeze on EXPIRATION → lower airway (bronchi/bronchioles: asthma, ABPA, eosinophilic bronchitis). Listen with your stethoscope over BOTH the trachea and the chest — the site of the loudest sound is your most powerful clinical clue.',
+        f['B'], f['XS'], '#0d5c63', '#dff2f1')
+
+    final = finish(img, draw, W, yy,
+        'MEMORY DEVICE — "Not all that wheezes is asthma, and not all asthma wheezes": always ask WHERE and WHEN before you write the label "asthma"',
+        f['XS'])
+    return i2r(final, CW)
 
 img_airway   = make_airway_anatomy()
 img_asthpath = make_asthma_path()
 img_severity = make_severity()
 img_diffmap  = make_diff_map()
+img_diffmap2 = make_diff_map2()
 print('PIL diagrams done.')
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -752,8 +736,8 @@ divider(story)
 sec_header('Section 8: Differential Diagnoses — Conditions That Mimic Asthma', story)
 professor_says('Every MRCP question about a young breathless patient with wheeze is testing whether you know the DIFFERENTIALS. Some look exactly like asthma but are not. Missing these causes harm. Know each one and how to distinguish it.', story)
 
-story.append(img_diffmap)
-story.append(bp('Differential diagnosis map — age, pattern, and distinguishing features', sImg))
+story.append(img_diffmap2)
+story.append(bp('Differential diagnosis map — distinguishing features, pattern by pattern', sImg))
 story.append(Spacer(1, 6))
 
 diff_table = [

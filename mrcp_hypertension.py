@@ -227,209 +227,256 @@ def load_fonts(sizes):
             fonts[name] = ImageFont.load_default()
     return fonts
 
-print('Building PIL diagrams...')
+print('Building PIL diagrams (text-safe card layout)...')
 
-# ── PIL 1: BP = CO x SVR — Physiology of Blood Pressure Regulation ───────────
+# ── TEXT-SAFE DIAGRAM TOOLKIT ────────────────────────────────────────────────
+# Definitive fix for diagram text overlap: every string is measured with
+# draw.textlength(), wrapped to fit its box, and box/card height is computed
+# FROM the wrapped line count — never assumed. Boxes stack by tracking the
+# returned bottom-y, so overlap is structurally impossible.
+
+def text_w(draw, s, font):
+    return draw.textlength(s, font=font)
+
+def wrap_text(draw, text, font, max_width):
+    out = []
+    for para in str(text).split('\n'):
+        if para.strip() == '':
+            out.append('')
+            continue
+        words = para.split(' ')
+        cur = ''
+        for w in words:
+            cand = w if not cur else cur + ' ' + w
+            if text_w(draw, cand, font) <= max_width or not cur:
+                cur = cand
+            else:
+                out.append(cur)
+                cur = w
+        if cur:
+            out.append(cur)
+    return out
+
+def lh(font, factor=1.32):
+    return int(font.size * factor)
+
+def draw_block(draw, x, y, text, font, fill, max_width, align='left', extra_gap=0):
+    lines = wrap_text(draw, text, font, max_width)
+    step = lh(font) + extra_gap
+    cy = y
+    for ln in lines:
+        if align == 'center':
+            w = text_w(draw, ln, font)
+            draw.text((x + (max_width - w) / 2, cy), ln, font=font, fill=fill, anchor='la')
+        else:
+            draw.text((x, cy), ln, font=font, fill=fill, anchor='la')
+        cy += step
+    return cy
+
+def card(draw, x0, x1, y, title, body, f_title, f_body, accent, body_bg, pad=13, line_gap=3):
+    """Stacked card: coloured title bar (wrapped) + body box (wrapped).
+    Height is fully computed from wrapped content — never guessed.
+    Returns the bottom-y so the next card stacks below with a guaranteed gap."""
+    inner_w = (x1 - x0) - 2 * pad
+    title_lines = wrap_text(draw, title, f_title, inner_w)
+    body_lines = wrap_text(draw, body, f_body, inner_w) if body else []
+    bar_h = len(title_lines) * lh(f_title) + 16
+    body_h = (len(body_lines) * (lh(f_body) + line_gap) + 2 * pad) if body_lines else 0
+
+    draw.rectangle([x0, y, x1, y + bar_h], fill=accent, outline=accent)
+    draw_block(draw, x0 + pad, y + 8, title, f_title, '#ffffff', inner_w)
+    if body_lines:
+        draw.rectangle([x0, y + bar_h, x1, y + bar_h + body_h], fill=body_bg, outline=accent, width=3)
+        draw_block(draw, x0 + pad, y + bar_h + pad, body, f_body, '#2b2b2b', inner_w, extra_gap=line_gap)
+    return y + bar_h + body_h
+
+def header_band(draw, W, title, font, pad_x, accent='#0d5c63', text_color='#ffffff'):
+    """Title band whose height is computed from the WRAPPED line count — a
+    long title can never spill out of (or be clipped by) its coloured bar."""
+    inner_w = W - 2 * pad_x
+    lines = wrap_text(draw, title, font, inner_w)
+    bar_h = len(lines) * lh(font) + 32
+    draw.rectangle([0, 0, W - 1, bar_h], fill=accent)
+    draw_block(draw, pad_x, 16, title, font, text_color, inner_w, align='center')
+    return bar_h
+
+def finish(img, draw, W, bottom_y, footer_text, f_xs, accent='#0d5c63'):
+    """Dark footer band whose height is computed from the WRAPPED line count,
+    then crop the canvas to the REAL content height (no dead space, and the
+    footer can never spill past the bottom edge)."""
+    inner_w = W - 60
+    lines = wrap_text(draw, footer_text, f_xs, inner_w)
+    foot_h = len(lines) * lh(f_xs) + 20
+    top = bottom_y + 14
+    draw.rectangle([0, top, W - 1, top + foot_h], fill=accent)
+    draw_block(draw, 30, top + 10, footer_text, f_xs, '#ffffff', inner_w, align='center')
+    return img.crop((0, 0, W, top + foot_h + 6))
+
+CARD_FONTS = {'T': 24, 'B': 17, 'XS': 14}
+PAD_X = 46
+
+# ── PIL 1: BP = CO x SVR — the master equation ──────────────────────────────
 def make_bp_physiology():
-    W, H = 900, 760
-    img = Image.new('RGB', (W, H), '#f4fbfc')
+    W, H_MAX = 900, 1300
+    f = load_fonts(CARD_FONTS)
+    img = Image.new('RGB', (W, H_MAX), '#f4fbfc')
     draw = ImageDraw.Draw(img)
-    f = load_fonts({'T':28,'B':24,'S':19,'XS':16})
+    x0, x1 = PAD_X, W - PAD_X
+    hh = header_band(draw, W, 'HOW BLOOD PRESSURE IS NORMALLY CONTROLLED', f['T'], PAD_X)
 
-    draw.rectangle([0,0,W-1,H-1], fill='#f4fbfc', outline='#1a8a94', width=3)
-    draw.rectangle([0,0,W-1,52], fill='#0d5c63')
-    draw.text((W//2, 26), 'HOW BLOOD PRESSURE IS NORMALLY CONTROLLED',
-              font=f['T'], fill='#ffffff', anchor='mm')
+    yy = hh + 22
+    yy = card(draw, x0, x1, yy,
+        'THE MASTER EQUATION',
+        'BLOOD PRESSURE  =  CARDIAC OUTPUT  ×  SYSTEMIC VASCULAR RESISTANCE (SVR). Memorise this — every antihypertensive drug class works by lowering ONE side of this equation.',
+        f['B'], f['XS'], '#b8860b', '#fff3cd')
+    yy += 16
+    yy = card(draw, x0, x1, yy,
+        'CARDIAC OUTPUT (CO) — how much blood the heart pumps per minute',
+        'CO = Heart Rate × Stroke Volume. Driven mainly by the sympathetic nervous system and circulating blood volume — the more volume returns to the heart, the harder it pumps.',
+        f['B'], f['XS'], '#2471a3', '#e8f4fd')
+    yy += 16
+    yy = card(draw, x0, x1, yy,
+        'SYSTEMIC VASCULAR RESISTANCE (SVR) — how tightly the arterioles are squeezed',
+        'Determined by how constricted the small arteries and arterioles are. Driven mainly by the renin–angiotensin–aldosterone system (RAAS), sympathetic vascular tone, and the health of the vessel endothelium.',
+        f['B'], f['XS'], '#c0392b', '#fde8e8')
+    yy += 16
+    yy = card(draw, x0, x1, yy,
+        'THE RESULT IN HEALTH — blood pressure held close to 120/80 mmHg',
+        'Hypertension develops the moment ANY of these systems pushes too hard, for too long, in the wrong direction — raising cardiac output, raising resistance, or both at once.',
+        f['B'], f['XS'], '#0d5c63', '#dff2f1')
 
-    # Central equation box
-    draw.rectangle([280, 78, 620, 148], fill='#fff3cd', outline='#e6a817', width=3)
-    draw.text((450, 100), 'BLOOD PRESSURE  =', font=f['B'], fill='#5b3a00', anchor='mm')
-    draw.text((450, 130), 'CARDIAC OUTPUT  x  RESISTANCE OF VESSELS', font=f['S'], fill='#5b3a00', anchor='mm')
+    final = finish(img, draw, W, yy,
+        'KEY EQUATION FOR MRCP — BP = CARDIAC OUTPUT × SYSTEMIC VASCULAR RESISTANCE: every drug class lowers one side of this equation',
+        f['XS'])
+    return i2r(final, CW)
 
-    # Down arrows to two branches
-    arr_d(draw, 370, 148, length=30, col='#0d5c63', w=3)
-    arr_d(draw, 530, 148, length=30, col='#0d5c63', w=3)
+# ── PIL 1b: The four systems that fine-tune blood pressure ──────────────────
+def make_bp_regulators():
+    W, H_MAX = 900, 1300
+    f = load_fonts(CARD_FONTS)
+    img = Image.new('RGB', (W, H_MAX), '#f4fbfc')
+    draw = ImageDraw.Draw(img)
+    x0, x1 = PAD_X, W - PAD_X
+    hh = header_band(draw, W, 'THE FOUR SYSTEMS THAT FINE-TUNE BLOOD PRESSURE, MOMENT TO MOMENT', f['T'], PAD_X)
 
-    # Left branch: Cardiac Output box
-    draw.rectangle([110, 188, 430, 268], fill='#e8f4fd', outline='#2471a3', width=3)
-    draw.text((270, 208), 'CARDIAC OUTPUT (CO)', font=f['B'], fill='#2471a3', anchor='mm')
-    draw.text((270, 234), 'CO = Heart Rate  x  Stroke Volume', font=f['XS'], fill='#333333', anchor='mm')
-    draw.text((270, 254), 'Driven by: sympathetic nerves + blood volume', font=f['XS'], fill='#333333', anchor='mm')
-
-    # Right branch: SVR box
-    draw.rectangle([470, 188, 790, 268], fill='#fde8e8', outline='#c0392b', width=3)
-    draw.text((630, 208), 'VESSEL RESISTANCE (SVR)', font=f['B'], fill='#c0392b', anchor='mm')
-    draw.text((630, 234), 'How tightly arterioles are squeezed shut', font=f['XS'], fill='#333333', anchor='mm')
-    draw.text((630, 254), 'Driven by: RAAS + sympathetic tone + endothelium', font=f['XS'], fill='#333333', anchor='mm')
-
-    arr_d(draw, 270, 268, length=28, col='#2471a3', w=3)
-    arr_d(draw, 630, 268, length=28, col='#c0392b', w=3)
-
-    # Four regulatory systems row
     systems = [
-        ('#d4edda','#28a745','KIDNEYS','Control salt and water.\nMore salt kept = more\nblood volume = higher BP.'),
-        ('#f5eef8','#7d3c98','RAAS CASCADE','Renin -> Angiotensin I ->\nAngiotensin II (by ACE) ->\nvasoconstriction + aldosterone.'),
-        ('#fef3e2','#d4640a','SYMPATHETIC\nNERVOUS SYSTEM','Adrenaline + noradrenaline.\nIncrease heart rate AND\nsqueeze blood vessels.'),
-        ('#e0f4f5','#1a8a94','BARORECEPTORS','Pressure sensors in carotid\nsinus + aortic arch.\nFast moment-to-moment control.'),
+        ('#28a745', '#d4edda', 'KIDNEYS — the long-term volume controllers',
+         'Control how much salt and water are retained or excreted. The more salt the kidneys keep, the more fluid stays in the circulation, and the higher the blood volume and blood pressure climb.'),
+        ('#7d3c98', '#f5eef8', 'RAAS CASCADE — the hormonal amplifier',
+         'Renin → Angiotensin I → Angiotensin II (via ACE) → direct vasoconstriction PLUS release of aldosterone, which makes the kidney retain even more salt and water. This cascade is the target of ACE inhibitors, ARBs, and aldosterone antagonists.'),
+        ('#d4640a', '#fef3e2', 'SYMPATHETIC NERVOUS SYSTEM — the fast-acting accelerator',
+         'Adrenaline and noradrenaline simultaneously increase heart rate (raising cardiac output) AND squeeze blood vessels shut (raising resistance) — a double effect that rapidly raises blood pressure under stress.'),
+        ('#1a8a94', '#e0f4f5', 'BARORECEPTORS — the second-to-second pressure sensors',
+         'Stretch-sensitive nerve endings in the carotid sinus and aortic arch detect pressure changes instantly and signal the brainstem to speed up or slow down the heart — the fastest of all the control loops.'),
     ]
-    box_w = 190; box_h = 150; gap = 14
-    start_x = (W - (4*box_w + 3*gap)) // 2
-    top_y = 320
-    for i,(bg,bd,name,detail) in enumerate(systems):
-        x0 = start_x + i*(box_w+gap)
-        draw.rectangle([x0, top_y, x0+box_w, top_y+box_h], fill=bg, outline=bd, width=3)
-        draw.text((x0+box_w//2, top_y+30), name, font=f['B'], fill=bd, anchor='mm')
-        draw.multiline_text((x0+box_w//2, top_y+95), detail, font=f['XS'], fill='#333333', anchor='mm', align='center', spacing=6)
+    yy = hh + 22
+    for accent, bg, title, body in systems:
+        yy = card(draw, x0, x1, yy, title, body, f['B'], f['XS'], accent, bg)
+        yy += 16
 
-    # Down arrows from systems to outcome
-    for i in range(4):
-        x0 = start_x + i*(box_w+gap) + box_w//2
-        arr_d(draw, x0, top_y+box_h, length=26, col=systems[i][1], w=3)
+    final = finish(img, draw, W, yy,
+        'MEMORY DEVICE — "K-R-S-B": Kidneys (slow, days), RAAS (hormonal, hours), Sympathetic (fast, seconds), Baroreceptors (instant, beat-to-beat)',
+        f['XS'])
+    return i2r(final, CW)
 
-    # Outcome box
-    draw.rectangle([170, top_y+box_h+30, 730, top_y+box_h+100], fill='#0d5c63', outline='#0d5c63', width=3)
-    draw.text((W//2, top_y+box_h+50), 'NORMAL BP MAINTAINED:  AROUND 120/80 mmHg',
-              font=f['B'], fill='#ffffff', anchor='mm')
-    draw.text((W//2, top_y+box_h+76), 'Hypertension = ANY of these systems pushes too hard, for too long, in the wrong direction',
-              font=f['XS'], fill='#d4edda', anchor='mm')
-
-    # Footer
-    draw.rectangle([0, H-36, W-1, H-1], fill='#0d5c63')
-    draw.text((W//2, H-18),
-              'KEY EQUATION FOR MRCP:  BP = CARDIAC OUTPUT  x  SYSTEMIC VASCULAR RESISTANCE  (SVR)',
-              font=f['XS'], fill='#ffffff', anchor='mm')
-
-    img.save('/tmp/bp_physiology.png')
-
-make_bp_physiology()
-img_physiology = i2r(Image.open('/tmp/bp_physiology.png'), CW)
-
-# ── PIL 2: Target Organ Damage Map ───────────────────────────────────────────
+# ── PIL 2: Target Organ Damage Map — "the silent killer" ────────────────────
 def make_organ_damage():
-    W, H = 900, 760
-    img = Image.new('RGB', (W, H), '#f4fbfc')
+    W, H_MAX = 900, 1500
+    f = load_fonts(CARD_FONTS)
+    img = Image.new('RGB', (W, H_MAX), '#f4fbfc')
     draw = ImageDraw.Draw(img)
-    f = load_fonts({'T':28,'B':24,'S':19,'XS':16})
-
-    draw.rectangle([0,0,W-1,H-1], fill='#f4fbfc', outline='#1a8a94', width=3)
-    draw.rectangle([0,0,W-1,52], fill='#0d5c63')
-    draw.text((W//2, 26), 'HYPERTENSION: THE SILENT KILLER — TARGET ORGAN DAMAGE',
-              font=f['T'], fill='#ffffff', anchor='mm')
+    x0, x1 = PAD_X, W - PAD_X
+    hh = header_band(draw, W, 'HYPERTENSION: THE SILENT KILLER — TARGET ORGAN DAMAGE', f['T'], PAD_X)
 
     organs = [
-        ('#fde8e8','#c0392b','BRAIN','Stroke (bleed or clot)  |  Hypertensive encephalopathy  |  Vascular dementia  |  TIA'),
-        ('#f5eef8','#7d3c98','EYES (RETINA)','Hypertensive retinopathy grades I-IV  |  Papilloedema in malignant HTN  |  Visual loss'),
-        ('#e8f4fd','#2471a3','HEART','Left ventricular hypertrophy (LVH)  |  Heart failure  |  Angina / MI  |  Atrial fibrillation'),
-        ('#fef3e2','#d4640a','KIDNEYS','Nephrosclerosis  |  Proteinuria (ACR raised)  |  Chronic kidney disease  |  Renal failure'),
-        ('#d4edda','#28a745','BLOOD VESSELS','Aortic aneurysm  |  Aortic dissection  |  Peripheral artery disease  |  Atherosclerosis'),
+        ('#c0392b', '#fde8e8', 'BRAIN',
+         'Stroke (haemorrhagic or ischaemic), hypertensive encephalopathy, vascular dementia, transient ischaemic attack (TIA) — uncontrolled pressure damages small cerebral vessels over years.'),
+        ('#7d3c98', '#f5eef8', 'EYES (RETINA)',
+         'Hypertensive retinopathy grades I–IV (arteriolar narrowing → AV nipping → flame haemorrhages/cotton-wool spots → papilloedema). Papilloedema signals malignant hypertension — an emergency.'),
+        ('#2471a3', '#e8f4fd', 'HEART',
+         'Left ventricular hypertrophy (LVH) from pumping against high resistance, heart failure, angina and myocardial infarction from accelerated atherosclerosis, and atrial fibrillation.'),
+        ('#d4640a', '#fef3e2', 'KIDNEYS',
+         'Nephrosclerosis, proteinuria (raised albumin:creatinine ratio), progressive chronic kidney disease, and eventually renal failure — and a damaged kidney then makes the hypertension WORSE, a vicious cycle.'),
+        ('#28a745', '#d4edda', 'BLOOD VESSELS',
+         'Aortic aneurysm formation, aortic dissection, peripheral arterial disease, and accelerated atherosclerosis throughout the arterial tree.'),
     ]
-    box_h = 96; gap = 18
-    start_y = 78
-    cx = W//2; bw = 760
-    for i,(bg,bd,name,detail) in enumerate(organs):
-        cy = start_y + i*(box_h+gap) + box_h//2
-        x0 = cx - bw//2; x1 = cx + bw//2
-        draw.rectangle([x0, cy-box_h//2, x1, cy+box_h//2], fill=bg, outline=bd, width=3)
-        draw.text((x0+115, cy), name, font=f['B'], fill=bd, anchor='mm')
-        draw.line([(x0+220, cy-box_h//2+12),(x0+220, cy+box_h//2-12)], fill=bd, width=2)
-        draw.multiline_text((x0+250, cy), detail.replace('  |  ','\n'), font=f['XS'], fill='#333333', anchor='lm', spacing=7)
-        if i < len(organs)-1:
-            arr_d(draw, cx, cy+box_h//2, length=gap, col=bd, w=3)
+    yy = hh + 22
+    for accent, bg, title, body in organs:
+        yy = card(draw, x0, x1, yy, title, body, f['B'], f['XS'], accent, bg)
+        yy += 16
 
-    draw.rectangle([0, H-36, W-1, H-1], fill='#0d5c63')
-    draw.text((W//2, H-18),
-              'WHY "SILENT"?  Usually NO symptoms until organ damage already happened — this is why we screen everyone',
-              font=f['XS'], fill='#ffffff', anchor='mm')
+    final = finish(img, draw, W, yy,
+        'WHY "SILENT"? Usually NO symptoms appear until organ damage has already happened — this is exactly why we screen everyone, every time',
+        f['XS'])
+    return i2r(final, CW)
 
-    img.save('/tmp/organ_damage.png')
-
-make_organ_damage()
-img_organdamage = i2r(Image.open('/tmp/organ_damage.png'), CW)
-
-# ── PIL 3: BP Classification / Staging Chart ─────────────────────────────────
+# ── PIL 3: BP Classification / Staging Chart (NICE / ESC 2023) ──────────────
 def make_classification():
-    W, H = 900, 700
-    img = Image.new('RGB', (W, H), '#f4fbfc')
+    W, H_MAX = 900, 1700
+    f = load_fonts(CARD_FONTS)
+    img = Image.new('RGB', (W, H_MAX), '#f4fbfc')
     draw = ImageDraw.Draw(img)
-    f = load_fonts({'T':28,'B':23,'S':19,'XS':16})
-
-    draw.rectangle([0,0,W-1,H-1], fill='#f4fbfc', outline='#1a8a94', width=3)
-    draw.rectangle([0,0,W-1,52], fill='#0d5c63')
-    draw.text((W//2, 26), 'BLOOD PRESSURE CATEGORIES (NICE / ESC 2023)',
-              font=f['T'], fill='#ffffff', anchor='mm')
-
-    # Column headers
-    draw.text((250, 76), 'CLINIC BP (mmHg)', font=f['S'], fill='#0d5c63', anchor='mm')
-    draw.text((620, 76), 'HOME / AMBULATORY BP (mmHg)', font=f['S'], fill='#0d5c63', anchor='mm')
+    x0, x1 = PAD_X, W - PAD_X
+    hh = header_band(draw, W, 'BLOOD PRESSURE CATEGORIES (NICE / ESC 2023)', f['T'], PAD_X)
 
     cats = [
-        ('#d4edda','#28a745','OPTIMAL / NORMAL','< 120/80','< 115/75'),
-        ('#e0f4f5','#1a8a94','HIGH-NORMAL','120-139 / 80-89','115-134 / 75-84'),
-        ('#fff3cd','#e6a817','STAGE 1 HYPERTENSION','140-159 / 90-99','135-149 / 85-94'),
-        ('#fef3e2','#d4640a','STAGE 2 HYPERTENSION','160-179 / 100-119','150-179 / 95-119'),
-        ('#fde8e8','#c0392b','SEVERE HYPERTENSION\n(STAGE 3)','>= 180 / 120',' clinic measurement\n used — admit if symptoms'),
-        ('#5b2c6f','#3a1a4f','HYPERTENSIVE EMERGENCY','>= 180/120 PLUS\nsigns of organ damage','Same-day specialist\nassessment required'),
+        ('#28a745', '#d4edda', 'OPTIMAL / NORMAL',
+         'Clinic BP < 120/80 mmHg.   Home/ambulatory BP < 115/75 mmHg.'),
+        ('#1a8a94', '#e0f4f5', 'HIGH-NORMAL',
+         'Clinic BP 120–139 / 80–89 mmHg.   Home/ambulatory BP 115–134 / 75–84 mmHg.'),
+        ('#e6a817', '#fff3cd', 'STAGE 1 HYPERTENSION',
+         'Clinic BP 140–159 / 90–99 mmHg.   Home/ambulatory BP 135–149 / 85–94 mmHg.'),
+        ('#d4640a', '#fef3e2', 'STAGE 2 HYPERTENSION',
+         'Clinic BP 160–179 / 100–119 mmHg.   Home/ambulatory BP 150–179 / 95–119 mmHg.'),
+        ('#c0392b', '#fde8e8', 'SEVERE HYPERTENSION (STAGE 3)',
+         'Clinic BP ≥ 180/120 mmHg with NO symptoms of organ damage. Confirm with repeat clinic measurement; arrange urgent specialist review within the day.'),
+        ('#5b2c6f', '#f5eef8', 'HYPERTENSIVE EMERGENCY',
+         'Clinic BP ≥ 180/120 mmHg PLUS signs of new organ damage (papilloedema, confusion, chest pain, AKI, heart failure). Needs SAME-DAY specialist assessment, often in hospital, with carefully controlled BP reduction.'),
     ]
-    box_h = 86; gap = 14
-    start_y = 96
-    for i,(bg,bd,name,clinic,home) in enumerate(cats):
-        cy = start_y + i*(box_h+gap) + box_h//2
-        txtcol = '#ffffff' if i==5 else bd
-        draw.rectangle([60, cy-box_h//2, 840, cy+box_h//2], fill=bg, outline=bd, width=3)
-        draw.multiline_text((250, cy), name, font=f['B'], fill=txtcol, anchor='mm', align='center', spacing=4)
-        draw.multiline_text((480, cy), clinic, font=f['S'], fill=('#ffffff' if i==5 else '#333333'), anchor='lm', align='left', spacing=5)
-        draw.multiline_text((660, cy), home, font=f['XS'], fill=('#ffffff' if i==5 else '#333333'), anchor='lm', align='left', spacing=5)
+    yy = hh + 22
+    for accent, bg, title, body in cats:
+        yy = card(draw, x0, x1, yy, title, body, f['B'], f['XS'], accent, bg)
+        yy += 14
 
-    draw.rectangle([0, H-36, W-1, H-1], fill='#0d5c63')
-    draw.text((W//2, H-18),
-              'RULE: Home/ambulatory BP readings are LOWER than clinic BP — this difference is built into the categories',
-              font=f['XS'], fill='#ffffff', anchor='mm')
+    final = finish(img, draw, W, yy,
+        'RULE — home/ambulatory BP readings run LOWER than clinic BP (no "white-coat" effect); this gap is already built into each category above',
+        f['XS'])
+    return i2r(final, CW)
 
-    img.save('/tmp/classification.png')
-
-make_classification()
-img_classification = i2r(Image.open('/tmp/classification.png'), CW)
-
-# ── PIL 4: NICE Stepwise Treatment Ladder (A / C / D rule) ───────────────────
+# ── PIL 4: NICE Stepwise Treatment Ladder — the A / C / D rule ──────────────
 def make_treatment_ladder():
-    W, H = 900, 800
-    img = Image.new('RGB', (W, H), '#f4fbfc')
+    W, H_MAX = 900, 1500
+    f = load_fonts(CARD_FONTS)
+    img = Image.new('RGB', (W, H_MAX), '#f4fbfc')
     draw = ImageDraw.Draw(img)
-    f = load_fonts({'T':28,'B':23,'S':19,'XS':16})
+    x0, x1 = PAD_X, W - PAD_X
+    hh = header_band(draw, W, 'NICE STEPWISE DRUG LADDER FOR HYPERTENSION (THE A-C-D RULE)', f['T'], PAD_X)
 
-    draw.rectangle([0,0,W-1,H-1], fill='#f4fbfc', outline='#1a8a94', width=3)
-    draw.rectangle([0,0,W-1,52], fill='#0d5c63')
-    draw.text((W//2, 26), 'NICE STEPWISE DRUG LADDER FOR HYPERTENSION (THE A-C-D RULE)',
-              font=f['T'], fill='#ffffff', anchor='mm')
-
-    # Step boxes
     steps = [
-        ('#d4edda','#28a745','STEP 1','Age < 55 and NOT Black African/Caribbean origin:  start  A  (ACE inhibitor or ARB)\nAge >= 55  OR  Black African/Caribbean origin (any age):  start  C  (Calcium channel blocker)'),
-        ('#e0f4f5','#1a8a94','STEP 2','Combine  A + C\n(ACE inhibitor or ARB  PLUS  Calcium channel blocker)'),
-        ('#fff3cd','#e6a817','STEP 3','Add  D  — a thiazide-like diuretic\nA + C + D   (e.g., ramipril + amlodipine + indapamide)'),
-        ('#fef3e2','#d4640a','STEP 4\n(RESISTANT HTN)','Confirm with ABPM/HBPM first. If K+ <= 4.5: ADD low-dose SPIRONOLACTONE.\nIf K+ > 4.5: add ALPHA-BLOCKER or BETA-BLOCKER. Refer to specialist.'),
+        ('#28a745', '#d4edda', 'STEP 1 — choose the first agent by age and ethnicity',
+         'Age under 55 AND NOT of Black African/African-Caribbean origin → start "A" (ACE inhibitor or ARB). Age 55 or over, OR of Black African/African-Caribbean origin at any age → start "C" (calcium channel blocker).'),
+        ('#1a8a94', '#e0f4f5', 'STEP 2 — combine two classes',
+         'Add the other of the two: "A" + "C" together — an ACE inhibitor or ARB PLUS a calcium channel blocker.'),
+        ('#e6a817', '#fff3cd', 'STEP 3 — add a thiazide-like diuretic',
+         '"A" + "C" + "D" — for example ramipril + amlodipine + indapamide. This three-drug combination controls the great majority of patients.'),
+        ('#d4640a', '#fef3e2', 'STEP 4 — resistant hypertension',
+         'Confirm true resistance with ABPM/HBPM first (exclude white-coat effect). If serum potassium ≤ 4.5 mmol/L → ADD low-dose spironolactone. If potassium > 4.5 mmol/L → add an alpha-blocker or beta-blocker instead, and refer to a specialist.'),
     ]
-    box_h = 132; gap = 20
-    start_y = 76
-    for i,(bg,bd,step,detail) in enumerate(steps):
-        cy = start_y + i*(box_h+gap) + box_h//2
-        draw.rectangle([60, cy-box_h//2, 840, cy+box_h//2], fill=bg, outline=bd, width=3)
-        draw.rectangle([60, cy-box_h//2, 230, cy+box_h//2], fill=bd)
-        draw.multiline_text((145, cy), step, font=f['B'], fill='#ffffff', anchor='mm', align='center', spacing=4)
-        draw.multiline_text((255, cy), detail, font=f['XS'], fill='#333333', anchor='lm', align='left', spacing=8)
-        if i < len(steps)-1:
-            arr_d(draw, 145, cy+box_h//2, length=gap, col=bd, w=3)
+    yy = hh + 22
+    for accent, bg, title, body in steps:
+        yy = card(draw, x0, x1, yy, title, body, f['B'], f['XS'], accent, bg)
+        yy += 16
 
-    # Footer reminder
-    draw.rectangle([0, H-44, W-1, H-1], fill='#0d5c63')
-    draw.multiline_text((W//2, H-22),
-              'REMEMBER:  A = ACE-inhibitor/ARB   C = Calcium channel blocker   D = thiazide-like Diuretic   |   TARGET: < 140/90 (under 80y) or < 150/90 (80y+)',
-              font=f['XS'], fill='#ffffff', anchor='mm', align='center', spacing=6)
+    final = finish(img, draw, W, yy,
+        'REMEMBER — A = ACE-inhibitor/ARB · C = Calcium channel blocker · D = thiazide-like Diuretic   |   TARGET: < 140/90 (under 80y) or < 150/90 (80y and over)',
+        f['XS'])
+    return i2r(final, CW)
 
-    img.save('/tmp/treatment_ladder.png')
-
-make_treatment_ladder()
-img_ladder = i2r(Image.open('/tmp/treatment_ladder.png'), CW)
+img_physiology     = make_bp_physiology()
+img_regulators     = make_bp_regulators()
+img_organdamage    = make_organ_damage()
+img_classification = make_classification()
+img_ladder         = make_treatment_ladder()
 
 print('PIL diagrams done.')
 
@@ -485,7 +532,11 @@ sec_header('Section 3: Physiology — How the Body Normally Controls Blood Press
 professor_says('You cannot understand what goes WRONG in hypertension until you understand what goes RIGHT in a healthy person. Every drug we use targets one of these normal control systems. Learn this section perfectly — it is the foundation for everything that follows.', story)
 
 story.append(img_physiology)
-story.append(bp('The master equation and the four systems that regulate blood pressure', sImg))
+story.append(bp('The master equation: blood pressure = cardiac output × systemic vascular resistance', sImg))
+story.append(Spacer(1, 8))
+
+story.append(img_regulators)
+story.append(bp('The four systems that regulate blood pressure, moment to moment', sImg))
 story.append(Spacer(1, 6))
 
 story.append(bp('<b>The Master Equation — memorise this first:</b>'))
