@@ -179,16 +179,37 @@ def draw_block(draw, text, font, x, y, max_w, color='#1a1a2e', center=False):
 
 def card(draw, fnt, x, y, w, title, bullets, bg_h, bg_b, border, title_col=WHITE):
     PAD = 12
-    draw.rectangle([x,y,x+w,y+9999], fill=bg_h, outline=border, width=2)
-    cy = y+PAD
-    cy = draw_block(draw,title,fnt['B'],x+PAD,cy,w-2*PAD,title_col,center=True)
-    cy += 4
-    draw.line([x+8,cy,x+w-8,cy],fill=border,width=1); cy += 6
+    # Step 1: dry-run to measure all heights before drawing anything
+    tmp = Image.new('RGB',(10,10)); td = ImageDraw.Draw(tmp)
+    t_lines = wrap_text(td, title, fnt['B'], w-2*PAD)
+    hdr_h = PAD + len(t_lines)*lh(fnt['B']) + 4 + 6  # top-pad + title + gap + after-line
+    body_h = 0
     for b in bullets:
-        cy = draw_block(draw,b,fnt['XS'],x+PAD+10,cy,w-2*PAD-10,'#1a1a2e')
+        bl = wrap_text(td, b, fnt['XS'], w-2*PAD-10)
+        body_h += len(bl)*lh(fnt['XS']) + 3
+    total_h = hdr_h + body_h + PAD
+
+    # Step 2: draw backgrounds (bottom layer — nothing overwrites text later)
+    draw.rectangle([x, y, x+w, y+total_h], fill=bg_b)          # full card body colour
+    draw.rectangle([x, y, x+w, y+hdr_h],   fill=bg_h)          # header strip
+    draw.rectangle([x, y, x+w, y+total_h], outline=border, width=2)  # outer border
+
+    # Step 3: draw title text on top
+    cy = y + PAD
+    for line in t_lines:
+        tw = text_w(draw, line, fnt['B'])
+        draw.text(((w-tw)//2+x, cy), line, font=fnt['B'], fill=title_col)
+        cy += lh(fnt['B'])
+    cy += 4
+    draw.line([x+8, cy, x+w-8, cy], fill=border, width=1)
+    cy += 6
+
+    # Step 4: draw bullets on top
+    for b in bullets:
+        cy = draw_block(draw, b, fnt['XS'], x+PAD+10, cy, w-2*PAD-10, '#1a1a2e')
         cy += 3
-    draw.rectangle([x,y,x+w,cy+PAD],fill=bg_b,outline=border,width=2)
-    return cy+PAD
+
+    return y + total_h
 
 def header_band(draw, fnt, x, y, w, text, bg, fg=WHITE):
     PAD=12
