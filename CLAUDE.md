@@ -1,8 +1,16 @@
-# MediCore KZ — Medical Information System
+# RemotEMR — Medical Information System
 
 Electronic medical record (EMR) for KAZ Minerals site clinics, built independently by the Group Chief Medical Officer (clinical lead) with Claude writing the code. It will replace the current 1C:Medicine system (CiToDesk-PM, customised by contractor SMT). When finished it is handed to KAZ Minerals IT ready to install on approved servers in Kazakhstan.
 
 Full requirements and gap analysis: `docs/project-brief.md`. Read it before designing or building any module.
+
+## Brand
+
+- Name: **RemotEMR** (REMOT + EMR sharing the E). Tagline: "Medical records for remote sites". In the wordmark, "REMOT" is graphite or ivory and "EMR" is copper.
+- Emblem: topographic contour lines (remote terrain, open-pit terraces) with a copper medical cross at the centre.
+- Colours: graphite `#1A1F27`, night `#12161C`, ivory `#FBF9F6` / `#EDE7DD`, copper gradient `#D9935A` → `#B87333` → `#8E5525`, muted text `#6B6F76`.
+- Font: Jost (SIL Open Font License). The logo letters are outlined paths, so the SVGs need no font installed.
+- Files: `brand/` (SVG and PNG; regenerate with `brand/generate_logo.py`, which expects the Jost variable font in a `fonts/` folder beside it). Contractor branding still appears on printed documents; RemotEMR is the product brand.
 
 ## Where the project stands
 

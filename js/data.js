@@ -1,5 +1,5 @@
 /* ============================================================
-   MediCore — Data Layer (localStorage persistence)
+   RemotEMR — Data Layer (localStorage persistence)
    ============================================================ */
 
 const DB = (() => {
@@ -128,7 +128,7 @@ const DB = (() => {
   ];
 
   const SEED_SETTINGS = {
-    clinicName: 'MediCore Medical Centre',
+    clinicName: 'RemotEMR Clinic',
     currency: 'ZMW',
     timezone: 'Africa/Lusaka',
     consultationFee: 150,
