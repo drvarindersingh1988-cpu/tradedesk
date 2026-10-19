@@ -1,4 +1,4 @@
-# RemotEMR — Project Brief
+# MediCore KZ — Project Brief
 
 Source: the CMO's project brief (Claude Docs, October 2026) and the analysis of the current system's screenshots. Specific patient records, staff names and the medication-loss investigation are deliberately left out of this repository.
 
